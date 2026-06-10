@@ -98,6 +98,10 @@
 
     lives: 3,
 
+    // Dev/testing aids. Set to false for a release build to disable the
+    // level-skip hotkeys and the on-screen hint.
+    debug: true,
+
     // Difficulty. Level 1 is event-driven (one driving car at a time); from
     // level 2 onward cars also arrive on a shrinking timer.
     level1SpawnGap: 0.6,       // pause before the next car on level 1
@@ -258,6 +262,9 @@
      INPUT
      ========================================================================= */
   function handleKeyDown(evt) {
+    // Dev level-skip hotkeys (work in any phase).
+    if (CONFIG.debug && handleDebugKey(evt)) return;
+
     if (state.phase === "gameOver") {
       if (evt.key === "r" || evt.key === "R" || evt.key === "Enter") startGame();
       return;
@@ -279,6 +286,33 @@
     }
   }
   window.addEventListener("keydown", handleKeyDown);
+
+  // Returns true if the key was a recognised dev shortcut (and was handled).
+  function handleDebugKey(evt) {
+    const maxLevel = 10;
+
+    // Digit keys: 1-9 -> that level, 0 -> level 10.
+    if (/^[0-9]$/.test(evt.key)) {
+      jumpToLevel(evt.key === "0" ? 10 : Number(evt.key));
+      return true;
+    }
+    if (evt.key === "n" || evt.key === "N") {
+      jumpToLevel(Math.min(maxLevel, state.level + 1));
+      return true;
+    }
+    if (evt.key === "b" || evt.key === "B") {
+      jumpToLevel(Math.max(1, state.level - 1));
+      return true;
+    }
+    return false;
+  }
+
+  // Restart a level for testing. Keeps score; refills lives if you'd died so
+  // the game is always immediately playable after a jump.
+  function jumpToLevel(level) {
+    if (state.lives <= 0) state.lives = CONFIG.lives;
+    startLevel(level);
+  }
 
   /* =========================================================================
      UPDATE
@@ -433,6 +467,19 @@
 
     if (state.phase === "levelComplete") drawLevelComplete();
     if (state.phase === "gameOver") drawGameOver();
+    if (CONFIG.debug) drawDebugHint();
+  }
+
+  function drawDebugHint() {
+    ctx.fillStyle = "rgba(255,255,255,0.35)";
+    ctx.font = "12px 'Segoe UI', Arial, sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(
+      "DEV: 1-9/0 jump to level · N next · B back",
+      12,
+      CONFIG.canvas.height - 8
+    );
   }
 
   function drawLanes() {
