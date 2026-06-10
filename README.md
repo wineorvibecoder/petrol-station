@@ -2,7 +2,7 @@
 
 A 2D top-down time-management browser game built with **pure Vanilla JavaScript, the HTML5 Canvas API, and CSS3** — no frameworks, no libraries, no build tools.
 
-Arriving Škoda cars wait in a queue and must be routed to the correct fuel stand: select the front car, then click a matching empty stand. The car drives over, refuels, and leaves — freeing the stand.
+Škoda cars stream in from the left across four lanes, each lane ending in a fuel station. Steer the highlighted (frontmost) car with **↑ / ↓** into the lane whose station matches its fuel. Correct station = points and a refuel; wrong station = a lost life. The longer you survive, the faster the cars come.
 
 ## Cars & stands
 
@@ -13,7 +13,14 @@ Arriving Škoda cars wait in a queue and must be routed to the correct fuel stan
 | Škoda Kodiaq | Diesel | Black |
 | Škoda Octavia G-TEC | CNG | Blue |
 
-> **Phase 1** ships the Green and Red stands (Electric + Petrol). Diesel and CNG are wired into the config and activate as soon as their stands are added.
+## Controls
+
+- **↑ / ↓** — move the highlighted car up/down a lane
+- **R** — restart after Game Over
+
+## Difficulty
+
+You start with 3 lives. Every few cars delivered correctly, the level rises: cars spawn more frequently and drive faster. Lose all your lives and it's Game Over.
 
 ## Run it
 

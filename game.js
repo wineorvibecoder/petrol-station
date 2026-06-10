@@ -1,22 +1,36 @@
 /* ===========================================================================
-   Škoda Charging & Refueling Station — game logic (Phase 1)
+   Škoda Charging & Refueling Station — game logic (Phase 2: lane-switcher)
 
    Pure Vanilla JS + Canvas 2D. No frameworks, no build step.
    Open index.html directly in a browser to run.
 
-   Architecture overview (kept modular so timers/score/more stands drop in
-   cleanly in later phases):
+   GAMEPLAY
+     Cars stream in from the left, each in one of four horizontal lanes.
+     Each lane ends in a fixed fuel station:
+        lane 0 -> Green (Electric)
+        lane 1 -> Red   (Petrol)
+        lane 2 -> Black (Diesel)
+        lane 3 -> Blue  (CNG)
+     The frontmost car (closest to the stations) is "active" and highlighted.
+     Press Up / Down to hop the active car between lanes. Get each car into the
+     lane whose station matches its fuel before it reaches the right edge.
+        Correct station  -> +score, quick refuel, drives off.
+        Wrong station    -> lose a life, flash, drives off.
+     As you clear cars the level rises: cars spawn faster and drive quicker.
+     Lose all lives -> Game Over (press R to restart).
 
-     CONFIG   - tunable constants & data tables (fuel types, sizes, speeds)
-     state    - the single mutable game-state object
-     Spawner  - decides when/what cars enter the queue
-     Input    - translates clicks into selection / move commands
-     update() - advances simulation (car movement + per-car state machine)
-     render() - draws everything from current state (no logic here)
-     loop()   - requestAnimationFrame driver tying update+render together
+   ARCHITECTURE (modular, logic separated from drawing)
+     CONFIG    - tunable constants & data tables
+     state     - the single mutable game-state object
+     levelTuning() - derives spawn rate / speed from current level
+     Spawner   - decides when/what cars enter
+     Input     - keyboard handling (lane switch + restart)
+     update()  - advances the simulation (movement + per-car state machine)
+     render()  - draws everything from current state (no game logic)
+     loop()    - requestAnimationFrame driver
 
-   Each Car runs a tiny state machine:
-     'queued' -> 'moving' -> 'refueling' -> 'leaving' -> (removed)
+   Each car runs a small state machine:
+     'driving' -> 'refueling' -> 'leaving' -> (removed)
    =========================================================================== */
 
 (function () {
@@ -27,18 +41,20 @@
      ========================================================================= */
   const CONFIG = {
     canvas: { width: 960, height: 600 },
+    hudHeight: 70, // top strip reserved for score / level / lives
 
-    // Fuel types map a car to the stand that can serve it.
-    // `color` is shared between a car and its matching stand for clarity.
+    // Fuel types map a car to the station that can serve it.
     fuelTypes: {
       ELECTRIC: { key: "ELECTRIC", label: "Electric", color: "#4ba82e", standLabel: "Green" },
       PETROL:   { key: "PETROL",   label: "Petrol",   color: "#d6453b", standLabel: "Red"   },
-      // DIESEL / CNG defined for later phases (no stands yet, so not spawned).
-      DIESEL:   { key: "DIESEL",   label: "Diesel",   color: "#2b2f36", standLabel: "Black" },
+      DIESEL:   { key: "DIESEL",   label: "Diesel",   color: "#454b54", standLabel: "Black" },
       CNG:      { key: "CNG",      label: "CNG",      color: "#3a78c2", standLabel: "Blue"  },
     },
 
-    // Car model -> fuel type. Only models whose stand exists get spawned.
+    // Lane order, top to bottom. Each lane is permanently tied to one fuel.
+    laneFuels: ["ELECTRIC", "PETROL", "DIESEL", "CNG"],
+
+    // Car model -> fuel type. Every fuel here has a lane, so all are spawnable.
     carModels: {
       ENYAQ:   { name: "Enyaq",   fuel: "ELECTRIC" },
       FABIA:   { name: "Fabia",   fuel: "PETROL"   },
@@ -46,19 +62,31 @@
       OCTAVIA: { name: "Octavia", fuel: "CNG"      },
     },
 
-    car:   { width: 80, height: 44, speed: 240 }, // speed in px/second
-    stand: { width: 120, height: 80 },
-
-    queue: {
-      x: 60,        // left margin of the queue column
-      topY: 120,    // y of the first (front) car
-      gap: 16,      // vertical gap between queued cars
+    car: {
+      width: 84,
+      height: 40,
+      laneSwitchSpeed: 520, // vertical px/sec while hopping lanes (smoothness)
     },
 
-    refuelSeconds: 3,   // how long a car sits at a stand
-    maxCarsOnScreen: 4, // spawner cap for Phase 1
-    spawnInitial: 2,    // cars present at start
-    spawnIntervalSeconds: 4, // try to add a car this often (up to the cap)
+    station: { width: 124 }, // drawn at the right edge; left edge = goal line
+
+    refuelSeconds: 0.8, // brief pause at the station before driving off
+
+    lives: 3,
+    points: { correct: 10, wrongPenalty: 5 },
+    carsPerLevel: 6, // successful dockings needed to advance a level
+
+    // Base difficulty at level 1; levelTuning() scales these up per level.
+    base: {
+      spawnInterval: 2.2, // seconds between spawns
+      carSpeed: 150,      // horizontal px/sec
+    },
+    perLevel: {
+      spawnIntervalStep: 0.18, // subtract per level
+      spawnIntervalMin: 0.75,  // floor
+      carSpeedStep: 14,        // add per level
+      carSpeedMax: 320,        // cap
+    },
   };
 
   /* =========================================================================
@@ -71,306 +99,272 @@
      STATE — the single source of truth.
      ========================================================================= */
   const state = {
-    cars: [],            // all active cars (any state)
-    stands: [],          // fixed list of fuel stands
-    selectedCarId: null, // id of the car the player has picked, or null
-    nextId: 1,           // monotonic id generator
-    spawnTimer: 0,       // seconds accumulator for the spawner
+    cars: [],
+    nextId: 1,
+    spawnTimer: 0,
+    score: 0,
+    level: 1,
+    lives: CONFIG.lives,
+    clearedThisLevel: 0, // successful dockings counted toward the next level
+    gameOver: false,
+    flash: null, // transient feedback marker { x, y, color, life, text }
   };
 
   /* =========================================================================
-     FACTORY HELPERS
+     GEOMETRY HELPERS
      ========================================================================= */
 
-  // Build the two Phase 1 stands (Green = Electric, Red = Petrol).
-  function createStands() {
-    const { width: cw } = CONFIG.canvas;
-    const sw = CONFIG.stand.width;
-    const standX = cw - sw - 80; // right side, with margin
-    return [
-      makeStand("ELECTRIC", standX, 140),
-      makeStand("PETROL", standX, 320),
-    ];
+  // Y of a lane's vertical center, given the lane index.
+  function laneCenterY(laneIndex) {
+    const top = CONFIG.hudHeight;
+    const laneHeight = (CONFIG.canvas.height - top) / CONFIG.laneFuels.length;
+    return top + laneHeight * laneIndex + laneHeight / 2;
   }
 
-  function makeStand(fuelKey, x, y) {
-    return {
-      fuel: fuelKey,
-      x, y,
-      width: CONFIG.stand.width,
-      height: CONFIG.stand.height,
-      occupantId: null, // id of the car currently parked here, or null
-    };
-  }
-
-  // Create a car of a given model and append it to the queue.
-  function spawnCar(modelKey) {
-    const model = CONFIG.carModels[modelKey];
-    const car = {
-      id: state.nextId++,
-      model: model.name,
-      fuel: model.fuel,
-      // Position is the car's top-left corner in canvas coordinates.
-      x: -CONFIG.car.width, // start just off the left edge for a drive-in feel
-      y: 0,
-      width: CONFIG.car.width,
-      height: CONFIG.car.height,
-      status: "queued",     // queued | moving | refueling | leaving
-      target: null,         // { x, y } movement goal, or null
-      standRef: null,       // stand object once assigned
-      refuelTimer: 0,       // counts down while refueling
-    };
-    state.cars.push(car);
-    return car;
+  // X where the stations begin — crossing this resolves a car (match check).
+  function goalLineX() {
+    return CONFIG.canvas.width - CONFIG.station.width;
   }
 
   /* =========================================================================
-     QUEUE MANAGEMENT
+     LEVEL TUNING — difficulty derived from state.level.
      ========================================================================= */
-
-  // Cars still waiting to be assigned, in arrival order.
-  function queuedCars() {
-    return state.cars.filter((c) => c.status === "queued");
-  }
-
-  // Recompute the target slot for every queued car so they line up neatly.
-  // The front car is index 0 (top of the column).
-  function reflowQueue() {
-    const q = queuedCars();
-    q.forEach((car, i) => {
-      car.target = {
-        x: CONFIG.queue.x,
-        y: CONFIG.queue.topY + i * (CONFIG.car.height + CONFIG.queue.gap),
-      };
-    });
-  }
-
-  // The front (first) waiting car — the only one selectable per the spec.
-  function frontCar() {
-    return queuedCars()[0] || null;
+  function levelTuning() {
+    const lvl = state.level - 1; // level 1 => no scaling
+    const spawnInterval = Math.max(
+      CONFIG.perLevel.spawnIntervalMin,
+      CONFIG.base.spawnInterval - lvl * CONFIG.perLevel.spawnIntervalStep
+    );
+    const carSpeed = Math.min(
+      CONFIG.perLevel.carSpeedMax,
+      CONFIG.base.carSpeed + lvl * CONFIG.perLevel.carSpeedStep
+    );
+    return { spawnInterval, carSpeed };
   }
 
   /* =========================================================================
      SPAWNER
      ========================================================================= */
 
-  // Only spawn models whose matching stand currently exists on the board.
-  function spawnableModelKeys() {
-    const availableFuels = new Set(state.stands.map((s) => s.fuel));
-    return Object.keys(CONFIG.carModels).filter((k) =>
-      availableFuels.has(CONFIG.carModels[k].fuel)
-    );
+  function spawnCar() {
+    const keys = Object.keys(CONFIG.carModels);
+    const model = CONFIG.carModels[keys[Math.floor(Math.random() * keys.length)]];
+
+    // Start in a random lane so the player usually has to correct it.
+    const lane = Math.floor(Math.random() * CONFIG.laneFuels.length);
+
+    const car = {
+      id: state.nextId++,
+      model: model.name,
+      fuel: model.fuel,
+      lane,
+      x: -CONFIG.car.width,
+      y: laneCenterY(lane) - CONFIG.car.height / 2,
+      width: CONFIG.car.width,
+      height: CONFIG.car.height,
+      status: "driving", // driving | refueling | leaving
+      refuelTimer: 0,
+      result: null,       // 'correct' | 'wrong' once resolved
+    };
+    state.cars.push(car);
   }
 
-  function trySpawn() {
-    if (state.cars.length >= CONFIG.maxCarsOnScreen) return;
-    const keys = spawnableModelKeys();
-    if (keys.length === 0) return;
-    const pick = keys[Math.floor(Math.random() * keys.length)];
-    spawnCar(pick);
-    reflowQueue();
+  // Maintain a minimum horizontal gap so freshly spawned cars don't overlap
+  // a car that is still entering from the left.
+  function laneIsClearToSpawn() {
+    const minGap = CONFIG.car.width + 30;
+    return !state.cars.some((c) => c.status === "driving" && c.x < minGap);
   }
 
   /* =========================================================================
-     INPUT — pointer handling.
+     ACTIVE CAR — the frontmost still-driving car (largest x), player-steered.
      ========================================================================= */
-
-  // Convert a DOM mouse event into logical canvas coordinates, accounting for
-  // any CSS scaling of the canvas element.
-  function eventToCanvas(evt) {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    return {
-      x: (evt.clientX - rect.left) * scaleX,
-      y: (evt.clientY - rect.top) * scaleY,
-    };
+  function activeCar() {
+    let best = null;
+    for (const c of state.cars) {
+      if (c.status !== "driving") continue;
+      if (!best || c.x > best.x) best = c;
+    }
+    return best;
   }
 
-  function pointInRect(px, py, r) {
-    return px >= r.x && px <= r.x + r.width && py >= r.y && py <= r.y + r.height;
-  }
-
-  function handleClick(evt) {
-    const { x, y } = eventToCanvas(evt);
-
-    // 1) If we clicked the front waiting car, select (or re-select) it.
-    const front = frontCar();
-    if (front && pointInRect(x, y, front)) {
-      state.selectedCarId = front.id;
+  /* =========================================================================
+     INPUT — keyboard.
+     ========================================================================= */
+  function handleKeyDown(evt) {
+    // Restart from the Game Over screen.
+    if (state.gameOver) {
+      if (evt.key === "r" || evt.key === "R" || evt.key === "Enter") {
+        resetGame();
+      }
       return;
     }
 
-    // 2) If a car is selected, check for a click on a matching empty stand.
-    if (state.selectedCarId != null) {
-      const car = state.cars.find((c) => c.id === state.selectedCarId);
-      if (car) {
-        const stand = state.stands.find((s) => pointInRect(x, y, s));
-        if (stand && stand.occupantId === null && stand.fuel === car.fuel) {
-          assignCarToStand(car, stand);
-          state.selectedCarId = null;
-          return;
-        }
-      }
+    const car = activeCar();
+    if (!car) return;
+
+    if (evt.key === "ArrowUp") {
+      evt.preventDefault();
+      car.lane = Math.max(0, car.lane - 1);
+    } else if (evt.key === "ArrowDown") {
+      evt.preventDefault();
+      car.lane = Math.min(CONFIG.laneFuels.length - 1, car.lane + 1);
     }
-
-    // 3) Clicking empty space clears the current selection.
-    state.selectedCarId = null;
   }
-
-  // Send a car toward a stand and reserve that stand immediately so it can't
-  // be double-booked.
-  function assignCarToStand(car, stand) {
-    stand.occupantId = car.id;
-    car.standRef = stand;
-    car.status = "moving";
-    // Aim for the stand center so the car visually sits inside it.
-    car.target = {
-      x: stand.x + (stand.width - car.width) / 2,
-      y: stand.y + (stand.height - car.height) / 2,
-    };
-    reflowQueue(); // remaining queued cars shuffle forward
-  }
-
-  canvas.addEventListener("click", handleClick);
+  window.addEventListener("keydown", handleKeyDown);
 
   /* =========================================================================
      UPDATE — advance the simulation by dt seconds.
      ========================================================================= */
-
   function update(dt) {
-    // Spawner tick.
-    state.spawnTimer += dt;
-    if (state.spawnTimer >= CONFIG.spawnIntervalSeconds) {
-      state.spawnTimer = 0;
-      trySpawn();
+    if (state.gameOver) {
+      tickFlash(dt);
+      return;
     }
 
-    // Per-car state machine.
+    const tuning = levelTuning();
+
+    // Spawner.
+    state.spawnTimer += dt;
+    if (state.spawnTimer >= tuning.spawnInterval && laneIsClearToSpawn()) {
+      state.spawnTimer = 0;
+      spawnCar();
+    }
+
     for (const car of state.cars) {
+      // Smoothly tween toward the current lane's center (vertical lane hops).
+      const targetY = laneCenterY(car.lane) - car.height / 2;
+      const dy = targetY - car.y;
+      const stepY = CONFIG.car.laneSwitchSpeed * dt;
+      car.y += Math.abs(dy) <= stepY ? dy : Math.sign(dy) * stepY;
+
       switch (car.status) {
-        case "queued":
-        case "moving":
-        case "leaving":
-          stepTowardTarget(car, dt);
+        case "driving":
+          car.x += tuning.carSpeed * dt;
+          if (car.x + car.width >= goalLineX()) resolveCar(car);
           break;
         case "refueling":
           car.refuelTimer -= dt;
-          if (car.refuelTimer <= 0) startLeaving(car);
+          if (car.refuelTimer <= 0) car.status = "leaving";
+          break;
+        case "leaving":
+          // Drive on off the right edge, then flag for removal.
+          car.x += (tuning.carSpeed + 80) * dt;
+          if (car.x > CONFIG.canvas.width + car.width) car._remove = true;
           break;
       }
     }
 
-    // Remove cars that have driven fully off-screen.
     state.cars = state.cars.filter((c) => !c._remove);
+    tickFlash(dt);
   }
 
-  // Move a car toward car.target at a fixed speed. Returns true on arrival.
-  function stepTowardTarget(car, dt) {
-    if (!car.target) return true;
-    const dx = car.target.x - car.x;
-    const dy = car.target.y - car.y;
-    const dist = Math.hypot(dx, dy);
-    const stepLen = CONFIG.car.speed * dt;
+  // A car has reached the station at the end of its lane: score it.
+  function resolveCar(car) {
+    const laneFuel = CONFIG.laneFuels[car.lane];
+    const correct = laneFuel === car.fuel;
 
-    if (dist <= stepLen || dist === 0) {
-      // Snap to target and fire the per-status arrival handler.
-      car.x = car.target.x;
-      car.y = car.target.y;
-      onArrive(car);
-      return true;
-    }
-
-    car.x += (dx / dist) * stepLen;
-    car.y += (dy / dist) * stepLen;
-    return false;
-  }
-
-  // Called when a car reaches car.target.
-  function onArrive(car) {
-    if (car.status === "moving") {
-      // Reached the stand — begin refueling.
+    if (correct) {
+      car.result = "correct";
       car.status = "refueling";
       car.refuelTimer = CONFIG.refuelSeconds;
-      car.target = null;
-    } else if (car.status === "leaving") {
-      // Reached the off-screen exit — flag for removal.
-      car._remove = true;
+      state.score += CONFIG.points.correct;
+      addFlash(car, "#4ba82e", "+" + CONFIG.points.correct);
+
+      // Level progression.
+      state.clearedThisLevel++;
+      if (state.clearedThisLevel >= CONFIG.carsPerLevel) {
+        state.clearedThisLevel = 0;
+        state.level++;
+      }
+    } else {
+      car.result = "wrong";
+      car.status = "leaving"; // no refuel; it just pulls away
+      state.score = Math.max(0, state.score - CONFIG.points.wrongPenalty);
+      state.lives--;
+      addFlash(car, "#d6453b", "WRONG!");
+      if (state.lives <= 0) {
+        state.lives = 0;
+        state.gameOver = true;
+      }
     }
-    // 'queued' arrivals just settle into their slot; nothing else to do.
   }
 
-  // Free the stand and send the car driving off the right edge.
-  function startLeaving(car) {
-    if (car.standRef) {
-      car.standRef.occupantId = null;
-      car.standRef = null;
-    }
-    car.status = "leaving";
-    car.target = { x: CONFIG.canvas.width + car.width, y: car.y };
+  /* =========================================================================
+     FLASH — short-lived feedback text near a docking car.
+     ========================================================================= */
+  function addFlash(car, color, text) {
+    state.flash = {
+      x: car.x + car.width / 2,
+      y: car.y,
+      color,
+      text,
+      life: 0.9,
+    };
+  }
+
+  function tickFlash(dt) {
+    if (!state.flash) return;
+    state.flash.life -= dt;
+    state.flash.y -= 30 * dt; // float upward
+    if (state.flash.life <= 0) state.flash = null;
   }
 
   /* =========================================================================
      RENDER — draw current state. No game logic here.
      ========================================================================= */
-
   function render() {
     const { width, height } = CONFIG.canvas;
     ctx.clearRect(0, 0, width, height);
 
-    drawBackground();
-    state.stands.forEach(drawStand);
+    drawLanes();
     state.cars.forEach(drawCar);
+    drawFlash();
+    drawHud();
+    if (state.gameOver) drawGameOver();
   }
 
-  function drawBackground() {
-    const { width, height } = CONFIG.canvas;
+  function drawLanes() {
+    const { width } = CONFIG.canvas;
+    const goal = goalLineX();
+    const laneHeight =
+      (CONFIG.canvas.height - CONFIG.hudHeight) / CONFIG.laneFuels.length;
 
-    // Queue lane label.
-    ctx.fillStyle = "#1f2329";
-    ctx.fillRect(40, 90, CONFIG.car.width + 40, height - 130);
-    ctx.fillStyle = "#6b7280";
-    ctx.font = "16px 'Segoe UI', Arial, sans-serif";
-    ctx.textBaseline = "alphabetic";
-    ctx.textAlign = "left";
-    ctx.fillText("QUEUE", 52, 80);
+    CONFIG.laneFuels.forEach((fuelKey, i) => {
+      const fuel = CONFIG.fuelTypes[fuelKey];
+      const cy = laneCenterY(i);
+      const laneTop = CONFIG.hudHeight + laneHeight * i;
 
-    // Stands area label.
-    ctx.fillText("STANDS", width - CONFIG.stand.width - 80, 80);
-  }
+      // Alternating lane background for readability.
+      ctx.fillStyle = i % 2 === 0 ? "#2b2f36" : "#262a30";
+      ctx.fillRect(0, laneTop, width, laneHeight);
 
-  function drawStand(stand) {
-    const fuel = CONFIG.fuelTypes[stand.fuel];
-
-    // Stand pad: subtle fill, colored border to signal its fuel type.
-    ctx.fillStyle = "#30343c";
-    ctx.fillRect(stand.x, stand.y, stand.width, stand.height);
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = fuel.color;
-    ctx.strokeRect(stand.x, stand.y, stand.width, stand.height);
-
-    // Highlight stands the selected car is allowed to use.
-    const selectedCar = state.cars.find((c) => c.id === state.selectedCarId);
-    const isValidTarget =
-      selectedCar &&
-      stand.occupantId === null &&
-      stand.fuel === selectedCar.fuel;
-    if (isValidTarget) {
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = "#ffffff";
-      ctx.setLineDash([8, 6]);
-      ctx.strokeRect(stand.x - 3, stand.y - 3, stand.width + 6, stand.height + 6);
+      // Dashed centre guide line along the lane.
+      ctx.strokeStyle = "rgba(255,255,255,0.07)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([14, 12]);
+      ctx.beginPath();
+      ctx.moveTo(0, cy);
+      ctx.lineTo(goal, cy);
+      ctx.stroke();
       ctx.setLineDash([]);
-    }
 
-    // Labels.
-    ctx.fillStyle = fuel.color;
-    ctx.font = "bold 16px 'Segoe UI', Arial, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(fuel.standLabel, stand.x + stand.width / 2, stand.y + 26);
-    ctx.fillStyle = "#aab0b8";
-    ctx.font = "13px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText(fuel.label, stand.x + stand.width / 2, stand.y + 46);
+      // Station block at the right end of the lane.
+      ctx.fillStyle = "#30343c";
+      ctx.fillRect(goal, laneTop + 6, CONFIG.station.width, laneHeight - 12);
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = fuel.color;
+      ctx.strokeRect(goal, laneTop + 6, CONFIG.station.width, laneHeight - 12);
+
+      ctx.fillStyle = fuel.color;
+      ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(fuel.standLabel, goal + CONFIG.station.width / 2, cy - 9);
+      ctx.fillStyle = "#aab0b8";
+      ctx.font = "13px 'Segoe UI', Arial, sans-serif";
+      ctx.fillText(fuel.label, goal + CONFIG.station.width / 2, cy + 11);
+    });
   }
 
   function drawCar(car) {
@@ -380,70 +374,128 @@
     ctx.fillStyle = fuel.color;
     ctx.fillRect(car.x, car.y, car.width, car.height);
 
-    // Selection outline on the chosen car.
-    if (car.id === state.selectedCarId) {
+    // Highlight the active (player-controlled) car + show steer hints.
+    if (car === activeCar()) {
       ctx.lineWidth = 3;
       ctx.strokeStyle = "#ffd400";
       ctx.strokeRect(car.x - 2, car.y - 2, car.width + 4, car.height + 4);
+
+      ctx.fillStyle = "#ffd400";
+      ctx.font = "bold 16px 'Segoe UI', Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("▲", car.x + car.width / 2, car.y - 14);
+      ctx.fillText("▼", car.x + car.width / 2, car.y + car.height + 14);
     }
 
-    // Model label (white text reads on every fuel color used here).
+    // Model label.
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 14px 'Segoe UI', Arial, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(car.model, car.x + car.width / 2, car.y + car.height / 2 - 6);
+    ctx.fillText(car.model, car.x + car.width / 2, car.y + car.height / 2);
+  }
 
-    // While refueling, show a tiny countdown so the wait is legible.
-    if (car.status === "refueling") {
-      ctx.font = "12px 'Segoe UI', Arial, sans-serif";
-      ctx.fillText(
-        "⛽ " + Math.ceil(car.refuelTimer) + "s",
-        car.x + car.width / 2,
-        car.y + car.height / 2 + 10
-      );
-    }
-    ctx.textBaseline = "alphabetic"; // reset shared state
+  function drawFlash() {
+    const f = state.flash;
+    if (!f) return;
+    ctx.globalAlpha = Math.max(0, Math.min(1, f.life / 0.9));
+    ctx.fillStyle = f.color;
+    ctx.font = "bold 22px 'Segoe UI', Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(f.text, f.x, f.y);
+    ctx.globalAlpha = 1;
+  }
+
+  function drawHud() {
+    const { width } = CONFIG.canvas;
+
+    // HUD strip background.
+    ctx.fillStyle = "#1a1d21";
+    ctx.fillRect(0, 0, width, CONFIG.hudHeight);
+    ctx.strokeStyle = "#3c424b";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, CONFIG.hudHeight);
+    ctx.lineTo(width, CONFIG.hudHeight);
+    ctx.stroke();
+
+    ctx.textBaseline = "middle";
+    const midY = CONFIG.hudHeight / 2;
+
+    // Score (left).
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#e8eaed";
+    ctx.font = "bold 22px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("Score " + state.score, 20, midY);
+
+    // Level (centre).
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#4ba82e";
+    ctx.fillText("Level " + state.level, width / 2, midY);
+
+    // Lives (right) as filled/empty pips.
+    ctx.textAlign = "right";
+    ctx.font = "20px 'Segoe UI', Arial, sans-serif";
+    let pips = "";
+    for (let i = 0; i < CONFIG.lives; i++) pips += i < state.lives ? "● " : "○ ";
+    ctx.fillStyle = "#d6453b";
+    ctx.fillText("Lives " + pips.trim(), width - 20, midY);
+  }
+
+  function drawGameOver() {
+    const { width, height } = CONFIG.canvas;
+    ctx.fillStyle = "rgba(0,0,0,0.72)";
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    ctx.fillStyle = "#d6453b";
+    ctx.font = "bold 48px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("GAME OVER", width / 2, height / 2 - 50);
+
+    ctx.fillStyle = "#e8eaed";
+    ctx.font = "24px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText(
+      "Final score: " + state.score + "   ·   Level " + state.level,
+      width / 2,
+      height / 2 + 4
+    );
+
+    ctx.fillStyle = "#9aa0a6";
+    ctx.font = "18px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("Press R to play again", width / 2, height / 2 + 48);
   }
 
   /* =========================================================================
-     MAIN LOOP — requestAnimationFrame with delta time.
+     RESET / MAIN LOOP / BOOTSTRAP
      ========================================================================= */
+  function resetGame() {
+    state.cars = [];
+    state.nextId = 1;
+    state.spawnTimer = 0;
+    state.score = 0;
+    state.level = 1;
+    state.lives = CONFIG.lives;
+    state.clearedThisLevel = 0;
+    state.gameOver = false;
+    state.flash = null;
+    spawnCar(); // start with one car already on the road
+  }
 
   let lastTime = 0;
-
   function loop(timestamp) {
-    // dt in seconds; clamp to avoid huge jumps after a tab is backgrounded.
     const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
     lastTime = timestamp;
-
     update(dt);
     render();
-
     requestAnimationFrame(loop);
   }
 
-  /* =========================================================================
-     BOOTSTRAP
-     ========================================================================= */
-
   function init() {
-    state.stands = createStands();
-
-    // Seed the queue with a couple of cars.
-    for (let i = 0; i < CONFIG.spawnInitial; i++) {
-      const keys = spawnableModelKeys();
-      spawnCar(keys[i % keys.length]);
-    }
-    reflowQueue();
-    // Snap initial cars straight to their queue slots (no drive-in on frame 1).
-    queuedCars().forEach((c) => {
-      if (c.target) {
-        c.x = c.target.x;
-        c.y = c.target.y;
-      }
-    });
-
+    resetGame();
     requestAnimationFrame(loop);
   }
 
