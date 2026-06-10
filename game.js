@@ -8,9 +8,9 @@
      Cars enter from the left across the currently active lanes, each lane
      ending in a fixed station. Stations unlock as you progress:
         Red (Petrol) + Black (Diesel)  from level 1
-        Blue (CNG)                     from level 3
-        Green (BEV / Electric)         from level 6
-        Carwash (for dirty/brown cars) from level 9
+        Carwash (for dirty/brown cars) from level 3
+        Blue (CNG)                     from level 6
+        Green (BEV / Electric)         from level 9
      Only car types whose station is open will arrive. You steer the frontmost
      (highlighted) car with Up / Down into the lane whose station matches its
      fuel — or, for a dirty car, into the carwash.
@@ -61,12 +61,14 @@
 
     // Stations in top-to-bottom display order, each with the level at which it
     // unlocks. New stations appear at the bottom so existing lanes don't move.
+    // Listed in unlock order so each newly opened station appears at the
+    // bottom and the existing lanes keep their positions.
     stations: [
       { fuel: "PETROL",   unlockLevel: 1 },
       { fuel: "DIESEL",   unlockLevel: 1 },
-      { fuel: "CNG",      unlockLevel: 3 },
-      { fuel: "ELECTRIC", unlockLevel: 6 },
-      { fuel: "WASH",     unlockLevel: 9 },
+      { fuel: "WASH",     unlockLevel: 3 },
+      { fuel: "CNG",      unlockLevel: 6 },
+      { fuel: "ELECTRIC", unlockLevel: 9 },
     ],
 
     // On these levels every open kind gets two stations/lanes instead of one

@@ -26,7 +26,7 @@ A 2D top-down time-management browser game built with **pure Vanilla JavaScript,
 - **3 lives**; **−1 life** for every car sent to the wrong station. Zero lives = Game Over.
 - Each **level lasts 60 seconds**, then a result screen shows your stats; press Enter to continue. Lives and score carry across levels.
 - **Level 1** is gentle — one car on the road at a time. From level 2 on, cars arrive more frequently and drive faster.
-- **Stations unlock over time:** Red (Petrol) and Black (Diesel) from the start, **Blue (CNG) at level 3**, **Green (BEV/Electric) at level 6**, and the **Carwash at level 9** (dirty brown cars start arriving then). Only cars whose station is open will appear.
+- **Stations unlock over time:** Red (Petrol) and Black (Diesel) from the start, the **Carwash at level 3** (dirty brown cars start arriving then), **Blue (CNG) at level 6**, and **Green (BEV/Electric) at level 9**. Only cars whose station is open will appear.
 - **Level 10 is a doubled finale:** every open kind gets two stations/lanes (10 lanes in all).
 
 ## Run it
