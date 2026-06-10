@@ -96,7 +96,31 @@
     loadSeconds: 3,            // time a car spends loading at the bay
     levelDurationSeconds: 60,  // length of each level
 
-    lives: 3,
+    // Two selectable difficulty modes (chosen on the start menu).
+    //   kid    — relaxed: 5 lives, and one life refills after each finished
+    //            level (capped at the 5-life maximum).
+    //   racing — for adults: 3 lives, no refills. Same speed as kid for now;
+    //            speedScale is here so it can be tuned later during testing.
+    modeOrder: ["kid", "racing"],
+    modes: {
+      kid: {
+        label: "Kid mode",
+        blurb: "Relaxed · 5 lives · +1 life after every level",
+        lives: 5,
+        refillPerLevel: true,
+        speedScale: 1,
+      },
+      racing: {
+        label: "Racing mode",
+        blurb: "For grown-ups · 3 lives · no refills",
+        lives: 3,
+        refillPerLevel: false,
+        speedScale: 1,
+      },
+    },
+
+    maxLevel: 10,        // final level; finishing it completes the run
+    maxNameLength: 12,   // leaderboard name length cap
 
     // Dev/testing aids. Set to false for a release build to disable the
     // level-skip hotkeys and the on-screen hint.
@@ -125,19 +149,34 @@
      STATE
      ========================================================================= */
   const state = {
-    phase: "playing", // 'playing' | 'levelComplete' | 'gameOver'
+    // 'menu' | 'playing' | 'levelComplete' | 'gameOver' | 'enterName' | 'leaderboard'
+    phase: "menu",
+    mode: "kid",      // selected difficulty mode (chosen on the menu)
+    menuIndex: 0,     // highlighted mode on the start menu
+    nameInput: "",    // current text in the name-entry field
+    lastResult: null, // { mode, score, level, won } captured when a run ends
+    lastBoard: null,  // leaderboard list shown after saving a score
+    lastSavedName: "",// name just saved (highlighted on the leaderboard)
     laneFuels: [],    // active stations top-to-bottom; set per level
     cars: [],
     nextId: 1,
     spawnTimer: 0,
     level: 1,
     score: 0,
-    lives: CONFIG.lives,
+    lives: 0,
     timeLeft: CONFIG.levelDurationSeconds,
     deliveredThisLevel: 0,
     missedThisLevel: 0,
     flash: null, // { x, y, color, text, life }
   };
+
+  // The config block for the currently selected mode, and its life cap.
+  function modeConfig() {
+    return CONFIG.modes[state.mode];
+  }
+  function maxLives() {
+    return modeConfig().lives;
+  }
 
   /* =========================================================================
      STATION UNLOCKS
@@ -195,10 +234,12 @@
      LEVEL TUNING
      ========================================================================= */
   function levelTuning() {
-    const carSpeed = Math.min(
-      CONFIG.perLevel.carSpeedMax,
-      CONFIG.base.carSpeed + (state.level - 1) * CONFIG.perLevel.carSpeedStep
-    );
+    const scale = modeConfig().speedScale;
+    const carSpeed =
+      Math.min(
+        CONFIG.perLevel.carSpeedMax,
+        CONFIG.base.carSpeed + (state.level - 1) * CONFIG.perLevel.carSpeedStep
+      ) * scale;
     const spawnInterval = Math.max(
       CONFIG.perLevel.spawnIntervalMin,
       CONFIG.perLevel.spawnIntervalBase -
@@ -262,19 +303,36 @@
      INPUT
      ========================================================================= */
   function handleKeyDown(evt) {
-    // Dev level-skip hotkeys (work in any phase).
+    switch (state.phase) {
+      case "menu":          handleMenuKey(evt); break;
+      case "playing":       handlePlayKey(evt); break;
+      case "levelComplete": handleLevelCompleteKey(evt); break;
+      case "gameOver":      handleGameOverKey(evt); break;
+      case "enterName":     handleNameKey(evt); break;
+      case "leaderboard":   handleLeaderboardKey(evt); break;
+    }
+  }
+  window.addEventListener("keydown", handleKeyDown);
+
+  // Start menu: pick a difficulty mode.
+  function handleMenuKey(evt) {
+    const n = CONFIG.modeOrder.length;
+    if (evt.key === "ArrowUp") {
+      evt.preventDefault();
+      state.menuIndex = (state.menuIndex - 1 + n) % n;
+    } else if (evt.key === "ArrowDown") {
+      evt.preventDefault();
+      state.menuIndex = (state.menuIndex + 1) % n;
+    } else if (evt.key === "Enter" || evt.key === " ") {
+      evt.preventDefault();
+      state.mode = CONFIG.modeOrder[state.menuIndex];
+      startGame();
+    }
+  }
+
+  // Playing: steer the active car (plus dev hotkeys).
+  function handlePlayKey(evt) {
     if (CONFIG.debug && handleDebugKey(evt)) return;
-
-    if (state.phase === "gameOver") {
-      if (evt.key === "r" || evt.key === "R" || evt.key === "Enter") startGame();
-      return;
-    }
-    if (state.phase === "levelComplete") {
-      if (evt.key === "Enter" || evt.key === " ") startLevel(state.level + 1);
-      return;
-    }
-
-    // Playing: steer the active car.
     const car = activeCar();
     if (!car) return;
     if (evt.key === "ArrowUp") {
@@ -285,11 +343,39 @@
       car.lane = Math.min(laneCount() - 1, car.lane + 1);
     }
   }
-  window.addEventListener("keydown", handleKeyDown);
+
+  function handleLevelCompleteKey(evt) {
+    if (CONFIG.debug && handleDebugKey(evt)) return;
+    if (evt.key === "Enter" || evt.key === " ") advanceFromLevelComplete();
+  }
+
+  function handleGameOverKey(evt) {
+    if (CONFIG.debug && handleDebugKey(evt)) return;
+    if (evt.key === "Enter" || evt.key === " " || evt.key === "r" || evt.key === "R") {
+      beginNameEntry(false);
+    }
+  }
+
+  // Name entry: type a name for the leaderboard.
+  function handleNameKey(evt) {
+    if (evt.key === "Enter") {
+      evt.preventDefault();
+      submitName();
+    } else if (evt.key === "Backspace") {
+      evt.preventDefault();
+      state.nameInput = state.nameInput.slice(0, -1);
+    } else if (evt.key.length === 1 && /[A-Za-z0-9 ]/.test(evt.key)) {
+      if (state.nameInput.length < CONFIG.maxNameLength) state.nameInput += evt.key;
+    }
+  }
+
+  function handleLeaderboardKey(evt) {
+    if (evt.key === "Enter" || evt.key === " ") state.phase = "menu";
+  }
 
   // Returns true if the key was a recognised dev shortcut (and was handled).
   function handleDebugKey(evt) {
-    const maxLevel = 10;
+    const maxLevel = CONFIG.maxLevel;
 
     // Digit keys: 1-9 -> that level, 0 -> level 10.
     if (/^[0-9]$/.test(evt.key)) {
@@ -310,7 +396,7 @@
   // Restart a level for testing. Keeps score; refills lives if you'd died so
   // the game is always immediately playable after a jump.
   function jumpToLevel(level) {
-    if (state.lives <= 0) state.lives = CONFIG.lives;
+    if (state.lives <= 0) state.lives = maxLives();
     startLevel(level);
   }
 
@@ -460,6 +546,12 @@
     const { width, height } = CONFIG.canvas;
     ctx.clearRect(0, 0, width, height);
 
+    // Non-gameplay screens own the whole canvas.
+    if (state.phase === "menu") return drawMenu();
+    if (state.phase === "enterName") return drawBackdrop(), drawEnterName();
+    if (state.phase === "leaderboard") return drawBackdrop(), drawLeaderboard();
+
+    // Gameplay (and the overlays that sit on top of it).
     drawLanes();
     state.cars.forEach(drawCar);
     drawFlash();
@@ -468,6 +560,12 @@
     if (state.phase === "levelComplete") drawLevelComplete();
     if (state.phase === "gameOver") drawGameOver();
     if (CONFIG.debug) drawDebugHint();
+  }
+
+  function drawBackdrop() {
+    const { width, height } = CONFIG.canvas;
+    ctx.fillStyle = "#1a1d21";
+    ctx.fillRect(0, 0, width, height);
   }
 
   function drawDebugHint() {
@@ -589,11 +687,14 @@
     ctx.textBaseline = "middle";
     const midY = CONFIG.hudHeight / 2;
 
-    // Score (left).
+    // Score + mode (left).
     ctx.textAlign = "left";
     ctx.fillStyle = "#e8eaed";
     ctx.font = "bold 22px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("Score " + state.score, 20, midY);
+    ctx.fillText("Score " + state.score, 20, midY - 9);
+    ctx.fillStyle = "#9aa0a6";
+    ctx.font = "13px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText(modeConfig().label, 20, midY + 13);
 
     // Level + time (centre).
     ctx.textAlign = "center";
@@ -608,7 +709,7 @@
     ctx.textAlign = "right";
     ctx.font = "20px 'Segoe UI', Arial, sans-serif";
     let pips = "";
-    for (let i = 0; i < CONFIG.lives; i++) pips += i < state.lives ? "● " : "○ ";
+    for (let i = 0; i < maxLives(); i++) pips += i < state.lives ? "● " : "○ ";
     ctx.fillStyle = "#d6453b";
     ctx.fillText("Lives " + pips.trim(), width - 20, midY);
   }
@@ -625,9 +726,15 @@
     const { width, height } = CONFIG.canvas;
     drawOverlay();
 
+    const finished = state.level >= CONFIG.maxLevel;
+
     ctx.fillStyle = "#4ba82e";
     ctx.font = "bold 46px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("LEVEL " + state.level + " COMPLETE", width / 2, height / 2 - 70);
+    ctx.fillText(
+      finished ? "ALL LEVELS COMPLETE!" : "LEVEL " + state.level + " COMPLETE",
+      width / 2,
+      height / 2 - 70
+    );
 
     ctx.fillStyle = "#e8eaed";
     ctx.font = "22px 'Segoe UI', Arial, sans-serif";
@@ -639,28 +746,41 @@
       height / 2 + 50
     );
 
-    // Heads-up about what changes in the upcoming level: a new station kind
-    // unlocking, and/or every station kind being doubled.
+    if (finished) {
+      ctx.fillStyle = "#ffd400";
+      ctx.font = "20px 'Segoe UI', Arial, sans-serif";
+      ctx.fillText("Press Enter to add your score", width / 2, height / 2 + 104);
+      return;
+    }
+
+    // Heads-up about what changes next level: a new station kind unlocking
+    // and/or every kind doubled, plus the kid-mode life refill.
     const next = state.level + 1;
     const unlocked = fuelsUnlockedAt(next);
-    let notice = null;
+    const notices = [];
     if (unlocked.length > 0) {
       const names = unlocked
         .map((f) => CONFIG.fuelTypes[f].standLabel + " (" + CONFIG.fuelTypes[f].label + ")")
         .join(", ");
-      notice = "New station unlocked: " + names + "!";
+      notices.push("New station unlocked: " + names + "!");
     } else if (CONFIG.doubleLevels.includes(next)) {
-      notice = "Double stations — two of every kind!";
+      notices.push("Double stations — two of every kind!");
     }
-    if (notice) {
-      ctx.fillStyle = "#4ba82e";
-      ctx.font = "bold 20px 'Segoe UI', Arial, sans-serif";
-      ctx.fillText(notice, width / 2, height / 2 + 90);
+    if (modeConfig().refillPerLevel && state.lives < maxLives()) {
+      notices.push("+1 life for finishing the level!");
     }
+
+    ctx.fillStyle = "#4ba82e";
+    ctx.font = "bold 20px 'Segoe UI', Arial, sans-serif";
+    notices.forEach((n, i) => ctx.fillText(n, width / 2, height / 2 + 90 + i * 26));
 
     ctx.fillStyle = "#ffd400";
     ctx.font = "20px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("Press Enter for Level " + (state.level + 1), width / 2, height / 2 + 124);
+    ctx.fillText(
+      "Press Enter for Level " + next,
+      width / 2,
+      height / 2 + 90 + notices.length * 26 + 14
+    );
   }
 
   function drawGameOver() {
@@ -679,9 +799,192 @@
       height / 2 + 12
     );
 
+    ctx.fillStyle = "#ffd400";
+    ctx.font = "18px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("Press Enter to add your score", width / 2, height / 2 + 56);
+  }
+
+  /* =========================================================================
+     MENU / NAME ENTRY / LEADERBOARD SCREENS
+     ========================================================================= */
+  function drawMenu() {
+    const { width } = CONFIG.canvas;
+    drawBackdrop();
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    ctx.fillStyle = "#4ba82e";
+    ctx.font = "bold 40px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("Choose your mode", width / 2, 92);
+
+    ctx.fillStyle = "#9aa0a6";
+    ctx.font = "16px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("↑ / ↓ to choose · Enter to start", width / 2, 128);
+
+    // Mode cards.
+    const cardW = 520, cardH = 78, gap = 18, startY = 170;
+    CONFIG.modeOrder.forEach((key, i) => {
+      const m = CONFIG.modes[key];
+      const x = width / 2 - cardW / 2;
+      const y = startY + i * (cardH + gap);
+      const selected = i === state.menuIndex;
+
+      ctx.fillStyle = selected ? "#2f3a2a" : "#262a30";
+      ctx.fillRect(x, y, cardW, cardH);
+      ctx.lineWidth = selected ? 4 : 2;
+      ctx.strokeStyle = selected ? "#4ba82e" : "#3c424b";
+      ctx.strokeRect(x, y, cardW, cardH);
+
+      ctx.textAlign = "left";
+      ctx.fillStyle = selected ? "#ffd400" : "#e8eaed";
+      ctx.font = "bold 24px 'Segoe UI', Arial, sans-serif";
+      ctx.fillText(m.label, x + 22, y + 28);
+      ctx.fillStyle = "#aab0b8";
+      ctx.font = "15px 'Segoe UI', Arial, sans-serif";
+      ctx.fillText(m.blurb, x + 22, y + 54);
+    });
+
+    // Top scores for the highlighted mode.
+    const hlKey = CONFIG.modeOrder[state.menuIndex];
+    const scores = loadScores(hlKey);
+    const boardY = startY + CONFIG.modeOrder.length * (cardH + gap) + 18;
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#e8eaed";
+    ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("Top scores — " + CONFIG.modes[hlKey].label, width / 2, boardY);
+
+    ctx.font = "15px 'Segoe UI', Arial, sans-serif";
+    if (scores.length === 0) {
+      ctx.fillStyle = "#9aa0a6";
+      ctx.fillText("No scores yet — be the first!", width / 2, boardY + 30);
+    } else {
+      scores.slice(0, 5).forEach((s, i) => {
+        ctx.fillStyle = "#cfd3d8";
+        ctx.fillText(
+          (i + 1) + ".  " + s.name + "  —  " + s.score,
+          width / 2,
+          boardY + 30 + i * 22
+        );
+      });
+    }
+  }
+
+  function drawEnterName() {
+    const { width, height } = CONFIG.canvas;
+    const res = state.lastResult;
+    const won = res && res.won;
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    ctx.fillStyle = won ? "#4ba82e" : "#d6453b";
+    ctx.font = "bold 40px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText(won ? "YOU FINISHED!" : "GAME OVER", width / 2, height / 2 - 130);
+
+    ctx.fillStyle = "#e8eaed";
+    ctx.font = "22px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText(
+      "Score " + (res ? res.score : 0) +
+        "  ·  " + CONFIG.modes[res ? res.mode : "kid"].label,
+      width / 2,
+      height / 2 - 86
+    );
+
     ctx.fillStyle = "#9aa0a6";
     ctx.font = "18px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("Press R to play again", width / 2, height / 2 + 56);
+    ctx.fillText("Enter your name for the leaderboard:", width / 2, height / 2 - 30);
+
+    // Input box with a blinking caret.
+    const boxW = 380, boxH = 54;
+    const bx = width / 2 - boxW / 2, by = height / 2;
+    ctx.fillStyle = "#262a30";
+    ctx.fillRect(bx, by, boxW, boxH);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#4ba82e";
+    ctx.strokeRect(bx, by, boxW, boxH);
+
+    const caret = Math.floor(Date.now() / 500) % 2 === 0 ? "|" : "";
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 26px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText(state.nameInput + caret, width / 2, by + boxH / 2);
+
+    ctx.fillStyle = "#ffd400";
+    ctx.font = "18px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("Type your name, then press Enter to save", width / 2, by + boxH + 36);
+  }
+
+  function drawLeaderboard() {
+    const { width, height } = CONFIG.canvas;
+    const modeKey = state.lastResult ? state.lastResult.mode : state.mode;
+    const board = state.lastBoard || loadScores(modeKey);
+
+    ctx.textBaseline = "middle";
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#4ba82e";
+    ctx.font = "bold 36px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("Leaderboard — " + CONFIG.modes[modeKey].label, width / 2, 70);
+
+    if (board.length === 0) {
+      ctx.fillStyle = "#9aa0a6";
+      ctx.font = "18px 'Segoe UI', Arial, sans-serif";
+      ctx.fillText("No scores yet.", width / 2, 140);
+    }
+
+    const rowH = 34, startY = 130;
+    board.forEach((s, i) => {
+      const isMe = s === state._lastEntry;
+      ctx.fillStyle = isMe ? "#ffd400" : "#e8eaed";
+      ctx.font = (isMe ? "bold " : "") + "20px 'Segoe UI', Arial, sans-serif";
+      const y = startY + i * rowH;
+
+      ctx.textAlign = "left";
+      ctx.fillText(i + 1 + ".", width / 2 - 230, y);
+      ctx.fillText(s.name, width / 2 - 190, y);
+      ctx.textAlign = "right";
+      ctx.fillText("Lv " + s.level, width / 2 + 120, y);
+      ctx.fillText(String(s.score), width / 2 + 230, y);
+    });
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffd400";
+    ctx.font = "18px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("Press Enter for the menu", width / 2, height - 36);
+  }
+
+  /* =========================================================================
+     LEADERBOARD  (persisted per mode in localStorage)
+     ========================================================================= */
+  function scoreKey(mode) {
+    return "skoda_station_scores_" + mode;
+  }
+
+  function loadScores(mode) {
+    try {
+      const raw = localStorage.getItem(scoreKey(mode));
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch (e) {
+      return []; // storage unavailable (e.g. file:// restrictions)
+    }
+  }
+
+  // Add a result and keep the top 10. Returns the trimmed, sorted list.
+  function saveScore(mode, name, score, level) {
+    const list = loadScores(mode);
+    const entry = { name: name, score: score, level: level, date: Date.now() };
+    list.push(entry);
+    list.sort((a, b) => b.score - a.score);
+    const top = list.slice(0, 10);
+    try {
+      localStorage.setItem(scoreKey(mode), JSON.stringify(top));
+    } catch (e) {
+      /* ignore write failures so the run can still end cleanly */
+    }
+    state._lastEntry = entry; // reference used to highlight it on the board
+    return top;
   }
 
   /* =========================================================================
@@ -702,12 +1005,48 @@
     spawnCar(); // first car on the road immediately
   }
 
-  // Full reset to a fresh game (level 1, full lives, zero score).
+  // Full reset to a fresh game (level 1, full lives, zero score) for the
+  // currently selected mode.
   function startGame() {
     state.score = 0;
-    state.lives = CONFIG.lives;
+    state.lives = maxLives();
     state.nextId = 1;
     startLevel(1);
+  }
+
+  // Enter pressed on the level-complete screen: finish the run after the final
+  // level, otherwise refill a life (kid mode) and roll into the next level.
+  function advanceFromLevelComplete() {
+    if (state.level >= CONFIG.maxLevel) {
+      beginNameEntry(true); // beat the whole game
+      return;
+    }
+    if (modeConfig().refillPerLevel) {
+      state.lives = Math.min(maxLives(), state.lives + 1);
+    }
+    startLevel(state.level + 1);
+  }
+
+  // A run has ended (won = finished level 10, or false = ran out of lives).
+  // Capture the result and open the name-entry screen.
+  function beginNameEntry(won) {
+    state.lastResult = {
+      mode: state.mode,
+      score: state.score,
+      level: state.level,
+      won: won,
+    };
+    state.nameInput = "";
+    state.phase = "enterName";
+  }
+
+  // Save the typed name + score to this mode's leaderboard, then show it.
+  function submitName() {
+    const res = state.lastResult;
+    const name = state.nameInput.trim() || "Anonymous";
+    state.lastBoard = saveScore(res.mode, name, res.score, res.level);
+    state.lastSavedName = name;
+    state.phase = "leaderboard";
   }
 
   /* =========================================================================
@@ -722,6 +1061,6 @@
     requestAnimationFrame(loop);
   }
 
-  startGame();
+  // Boot straight to the start menu; the player picks a mode to begin.
   requestAnimationFrame(loop);
 })();

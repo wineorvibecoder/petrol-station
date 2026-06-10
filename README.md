@@ -14,16 +14,27 @@ A 2D top-down time-management browser game built with **pure Vanilla JavaScript,
 | Škoda Enyaq | Electric (BEV) | Green |
 | Dirty car (brown) | A wash | Carwash |
 
+## Modes
+
+Pick a mode on the start menu (**↑ / ↓** to choose, **Enter** to start):
+
+- **Kid mode** — relaxed: **5 lives**, and **+1 life after every finished level** (capped at 5).
+- **Racing mode** — for grown-ups: **3 lives**, no refills. Same car speed as Kid mode for now (tunable later via each mode's `speedScale`).
+
+## Leaderboard
+
+When a run ends — either by running out of lives or by finishing level 10 — you can type a name and save your **total score** (the sum across all levels you played) to a leaderboard. Boards are kept **separately for Kid and Racing modes** and persist in the browser via `localStorage`. The top scores for the highlighted mode are previewed on the start menu.
+
 ## Controls
 
-- **↑ / ↓** — move the highlighted car up/down a lane
-- **Enter** — start the next level from the result screen
-- **R** — restart after Game Over
+- **↑ / ↓** — move the highlighted car up/down a lane (and navigate the menu)
+- **Enter** — confirm menu choice · advance from the result screen · save your name
+- **Backspace** — edit your name on the name-entry screen
 
 ## Scoring & difficulty
 
 - **+1 point** for each car that finishes loading and leaves.
-- **3 lives**; **−1 life** for every car sent to the wrong station. Zero lives = Game Over.
+- **Lives depend on the mode** (5 in Kid mode, 3 in Racing); **−1 life** for every car sent to the wrong station. Zero lives = Game Over.
 - Each **level lasts 60 seconds**, then a result screen shows your stats; press Enter to continue. Lives and score carry across levels.
 - **Level 1** is gentle — one car on the road at a time. From level 2 on, cars arrive more frequently and drive faster.
 - **Stations unlock over time:** Red (Petrol) and Black (Diesel) from the start, the **Carwash at level 3** (dirty brown cars start arriving then), **Blue (CNG) at level 6**, and **Green (BEV/Electric) at level 9**. Only cars whose station is open will appear.
