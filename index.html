@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Škoda Charging & Refueling Station</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="game-wrapper">
+    <header id="hud">
+      <h1>Škoda Charging &amp; Refueling Station</h1>
+      <p id="instructions">Click a waiting car, then click a matching empty stand.</p>
+    </header>
+
+    <!-- Fixed logical resolution; CSS scales it down responsively. -->
+    <canvas id="game-canvas" width="960" height="600"></canvas>
+  </div>
+
+  <!-- Single entry point; game.js wires everything together on load. -->
+  <script src="game.js"></script>
+</body>
+</html>
