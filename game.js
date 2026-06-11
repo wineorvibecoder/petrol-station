@@ -88,11 +88,13 @@
     dirtyChance: 0.1,
 
     carModels: {
+      // Real Škoda models, each tied to the fuel its station serves. A dirty
+      // car is one of THESE models that just happens to be muddy and needs the
+      // wash, so there's no separate "dirty" model — see randomDirtyModelName().
       ENYAQ:   { name: "Enyaq",   fuel: "ELECTRIC" },
       FABIA:   { name: "Fabia",   fuel: "PETROL"   },
       KODIAQ:  { name: "Kodiaq",  fuel: "DIESEL"   },
       OCTAVIA: { name: "Octavia", fuel: "CNG"      },
-      DIRTY:   { name: "Dirty",   fuel: "WASH"     },
     },
 
     car: {
@@ -424,6 +426,13 @@
     return key ? CONFIG.carModels[key].name : "";
   }
 
+  // A dirty car is just a random real model that's muddy and must visit the
+  // wash; its name varies (Fabia, Enyaq, …) while its destination is the wash.
+  function randomDirtyModelName() {
+    const names = Object.values(CONFIG.carModels).map((m) => m.name);
+    return names[Math.floor(Math.random() * names.length)];
+  }
+
   /* =========================================================================
      GEOMETRY HELPERS
      ========================================================================= */
@@ -498,7 +507,9 @@
     } else {
       isPolice = false;
       fuel = pickFuel();
-      model = modelForFuel(fuel);
+      // Dirty cars are real models that are muddy; their name varies but they
+      // must go to the wash. Other cars take the model matching their fuel.
+      model = fuel === "WASH" ? randomDirtyModelName() : modelForFuel(fuel);
     }
 
     // Enter in a random active lane (player still has to sort most of them).
@@ -930,6 +941,20 @@
       ctx.fillRect(barX + barW / 2, car.y + 3, barW / 2, 6);
     }
 
+    // Dirty car: brown mud splatter over the body so it clearly needs a wash.
+    if (!car.isPolice && car.fuel === "WASH") {
+      ctx.fillStyle = "rgba(54,38,20,0.9)";
+      const spots = [
+        [0.18, 0.30, 4], [0.40, 0.62, 5], [0.62, 0.34, 3],
+        [0.78, 0.60, 4], [0.50, 0.24, 3], [0.30, 0.70, 3],
+      ];
+      spots.forEach(([fx, fy, r]) => {
+        ctx.beginPath();
+        ctx.arc(car.x + car.width * fx, car.y + car.height * fy, r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
     // Active (player-controlled) car: outline + steer hints.
     if (car === activeCar()) {
       ctx.lineWidth = 3;
@@ -943,12 +968,9 @@
       ctx.fillText("▼", car.x + car.width / 2, car.y + car.height + 14);
     }
 
-    // Model label (Škoda model names stay as-is; police/dirty are localized).
-    const displayName = car.isPolice
-      ? t("policeCar")
-      : car.fuel === "WASH"
-      ? t("dirtyCar")
-      : car.model;
+    // Model label: real Škoda model names (a dirty car keeps its model name —
+    // it's just muddy); only the police car uses a localized label.
+    const displayName = car.isPolice ? t("policeCar") : car.model;
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 14px 'Segoe UI', Arial, sans-serif";
     ctx.textAlign = "center";
