@@ -206,6 +206,14 @@
       .map((s) => s.fuel);
   }
 
+  // The car model that needs a given fuel (e.g. PETROL -> "Fabia").
+  function modelForFuel(fuel) {
+    const key = Object.keys(CONFIG.carModels).find(
+      (k) => CONFIG.carModels[k].fuel === fuel
+    );
+    return key ? CONFIG.carModels[key].name : "";
+  }
+
   /* =========================================================================
      GEOMETRY HELPERS
      ========================================================================= */
@@ -237,12 +245,16 @@
   /* =========================================================================
      LEVEL TUNING
      ========================================================================= */
-  function levelTuning() {
-    // Car speed comes straight from the mode's per-level table; levels past the
-    // end of the table (shouldn't happen) reuse the last entry.
+  // Car speed (px/s) for a level in the current mode, read from its per-level
+  // table; levels past the end of the table reuse the last entry.
+  function levelSpeed(level) {
     const speeds = modeConfig().speedByLevel;
-    const idx = Math.min(Math.max(state.level, 1), speeds.length) - 1;
-    const carSpeed = speeds[idx];
+    const idx = Math.min(Math.max(level, 1), speeds.length) - 1;
+    return speeds[idx];
+  }
+
+  function levelTuning() {
+    const carSpeed = levelSpeed(state.level);
     const spawnInterval = Math.max(
       CONFIG.perLevel.spawnIntervalMin,
       CONFIG.perLevel.spawnIntervalBase -
@@ -267,10 +279,7 @@
       isPolice = false;
       const fuels = state.laneFuels;
       fuel = fuels[Math.floor(Math.random() * fuels.length)];
-      const modelKey = Object.keys(CONFIG.carModels).find(
-        (k) => CONFIG.carModels[k].fuel === fuel
-      );
-      model = CONFIG.carModels[modelKey].name;
+      model = modelForFuel(fuel);
     }
 
     // Enter in a random active lane (player still has to sort most of them).
@@ -318,6 +327,7 @@
   function handleKeyDown(evt) {
     switch (state.phase) {
       case "menu":          handleMenuKey(evt); break;
+      case "briefing":      handleBriefingKey(evt); break;
       case "playing":       handlePlayKey(evt); break;
       case "levelComplete": handleLevelCompleteKey(evt); break;
       case "gameOver":      handleGameOverKey(evt); break;
@@ -339,8 +349,13 @@
     } else if (evt.key === "Enter" || evt.key === " ") {
       evt.preventDefault();
       state.mode = CONFIG.modeOrder[state.menuIndex];
-      startGame();
+      state.phase = "briefing"; // show the level-1 how-to-play box first
     }
+  }
+
+  // Level-1 briefing: Enter starts the game.
+  function handleBriefingKey(evt) {
+    if (evt.key === "Enter" || evt.key === " ") startGame();
   }
 
   // Playing: steer the active car (plus dev hotkeys).
@@ -593,6 +608,7 @@
 
     // Non-gameplay screens own the whole canvas.
     if (state.phase === "menu") return drawMenu();
+    if (state.phase === "briefing") return drawBackdrop(), drawBriefing();
     if (state.phase === "enterName") return drawBackdrop(), drawEnterName();
     if (state.phase === "leaderboard") return drawBackdrop(), drawLeaderboard();
 
@@ -812,8 +828,8 @@
       return;
     }
 
-    // Heads-up about what changes next level: a new station kind unlocking
-    // and/or police cars arriving, plus the kid-mode life refill.
+    // Heads-up about what changes next level: a new station kind unlocking,
+    // police cars arriving, faster traffic, plus the kid-mode life refill.
     const next = state.level + 1;
     const unlocked = fuelsUnlockedAt(next);
     const notices = [];
@@ -825,6 +841,9 @@
     }
     if (next === CONFIG.police.fromLevel) {
       notices.push("Police cars! Wave them through any free station — not the wash.");
+    }
+    if (levelSpeed(next) > levelSpeed(state.level)) {
+      notices.push("Faster cars ahead — speed up!");
     }
     if (modeConfig().refillPerLevel && state.lives < maxLives()) {
       notices.push("+1 life for finishing the level!");
@@ -865,7 +884,7 @@
   }
 
   /* =========================================================================
-     MENU / NAME ENTRY / LEADERBOARD SCREENS
+     MENU / BRIEFING / NAME ENTRY / LEADERBOARD SCREENS
      ========================================================================= */
   function drawMenu() {
     const { width } = CONFIG.canvas;
@@ -929,6 +948,86 @@
         );
       });
     }
+  }
+
+  // Level-1 how-to-play box: the controls plus the stations and cars present
+  // at the start (later levels announce their new arrivals on the result screen).
+  function drawBriefing() {
+    const { width, height } = CONFIG.canvas;
+    const fuels = activeFuels(1);
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    ctx.fillStyle = "#4ba82e";
+    ctx.font = "bold 40px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("How to play", width / 2, 60);
+
+    ctx.fillStyle = "#e8eaed";
+    ctx.font = "20px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("Cars drive in from the left. Steer the highlighted car", width / 2, 106);
+    ctx.fillText("(yellow outline) with ↑ / ↓ into its matching station.", width / 2, 134);
+    ctx.fillStyle = "#d6453b";
+    ctx.font = "18px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText(
+      "It loads, then drives off for +1. Wrong station costs a life.",
+      width / 2,
+      168
+    );
+
+    ctx.fillStyle = "#9aa0a6";
+    ctx.font = "16px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("Level 1 — match these:", width / 2, 212);
+
+    // Car -> station rows for every kind open at level 1.
+    const rowY0 = 262, rowH = 66;
+    const carW = 96, carH = 40;
+    const carX = width / 2 - 250;
+    const arrowX = width / 2 - 110;
+    const stX = width / 2 - 50, stW = 260, stH = 48;
+
+    fuels.forEach((fuelKey, i) => {
+      const fuel = CONFIG.fuelTypes[fuelKey];
+      const cy = rowY0 + i * rowH;
+
+      // Car swatch + model name.
+      ctx.fillStyle = fuel.color;
+      ctx.fillRect(carX, cy - carH / 2, carW, carH);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 14px 'Segoe UI', Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(modelForFuel(fuelKey), carX + carW / 2, cy);
+
+      // Arrow.
+      ctx.fillStyle = "#e8eaed";
+      ctx.font = "26px 'Segoe UI', Arial, sans-serif";
+      ctx.fillText("→", arrowX, cy);
+
+      // Station box, outlined in the fuel colour, with a colour swatch so even
+      // dark kinds (Diesel) read clearly against the dark label text.
+      ctx.fillStyle = "#30343c";
+      ctx.fillRect(stX, cy - stH / 2, stW, stH);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = fuel.color;
+      ctx.strokeRect(stX, cy - stH / 2, stW, stH);
+
+      const sw = 26;
+      ctx.fillStyle = fuel.color;
+      ctx.fillRect(stX + 12, cy - sw / 2, sw, sw);
+      ctx.strokeStyle = "rgba(255,255,255,0.25)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(stX + 12, cy - sw / 2, sw, sw);
+
+      ctx.fillStyle = "#e8eaed";
+      ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText(fuel.standLabel + " — " + fuel.label, stX + 12 + sw + 12, cy);
+    });
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffd400";
+    ctx.font = "20px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("Press Enter to start", width / 2, height - 48);
   }
 
   function drawEnterName() {

@@ -17,7 +17,7 @@ A 2D top-down time-management browser game built with **pure Vanilla JavaScript,
 
 ## Modes
 
-Pick a mode on the start menu (**↑ / ↓** to choose, **Enter** to start):
+Pick a mode on the start menu (**↑ / ↓** to choose, **Enter** to continue), then a short **how-to-play screen** shows the controls and the stations/cars present at level 1 before the game begins.
 
 - **Kid mode** — relaxed: **5 lives**, **+1 life after every finished level** (capped at 5), and a **gentle speed ramp** that only speeds up on quiet levels: it *holds* its speed whenever a new element arrives (carwash, CNG, electric, police), reaching 220 by the finale.
 - **Racing mode** — for grown-ups: **3 lives**, no refills, and a **faster ramp** (starts at 150, climbs to 300) using the same hold-on-new-element rule. Each mode's per-level car speed is an explicit `speedByLevel` table that's easy to hand-tune.
@@ -36,7 +36,7 @@ When a run ends — either by running out of lives or by finishing level 10 — 
 
 - **+1 point** for each car that finishes loading and leaves.
 - **Lives depend on the mode** (5 in Kid mode, 3 in Racing); **−1 life** for every car sent to the wrong station. Zero lives = Game Over.
-- Each **level lasts 60 seconds**, then a result screen shows your stats; press Enter to continue. Lives and score carry across levels.
+- Each **level lasts 60 seconds**, then a result screen shows your stats and a heads-up about what the next level brings — a new station, police cars, faster traffic, and (in Kid mode) the +1 life. Press Enter to continue. Lives and score carry across levels.
 - **Level 1** is gentle — one car on the road at a time. From level 2 on, cars arrive more frequently and drive faster.
 - **Stations unlock over time:** Red (Petrol) and Black (Diesel) from the start, the **Carwash at level 3** (dirty brown cars start arriving then), **Blue (CNG) at level 6**, and **Green (BEV/Electric) at level 9**. Only cars whose station is open will appear.
 - **Level 10 adds police cars** (about 1 in 6 arrivals): a police car has no fuel and is rushing to a case, so it must **pass straight through a station — no loading**. Steer it into **any free station of any kind except the carwash** and it rushes through for +1. If that station is busy (a car is queued or loading there) the police car would be forced to stop in the queue — that's a miss; sending it to the carwash is a miss too. Each miss costs a life.
