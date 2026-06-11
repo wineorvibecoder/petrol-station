@@ -82,6 +82,11 @@
       color: "#1f2d5a", // dark police blue
     },
 
+    // Once the carwash is open, this share of (non-police) cars are dirty; the
+    // rest are split evenly between the other open fuels (so e.g. petrol/diesel
+    // stay ~50:50). Keeps dirty cars rare instead of scaling with station count.
+    dirtyChance: 0.1,
+
     carModels: {
       ENYAQ:   { name: "Enyaq",   fuel: "ELECTRIC" },
       FABIA:   { name: "Fabia",   fuel: "PETROL"   },
@@ -471,6 +476,16 @@
   /* =========================================================================
      CARS
      ========================================================================= */
+  // Pick the fuel for a regular (non-police) car: a fixed share are dirty once
+  // the wash is open, and the remainder split evenly across the other open
+  // fuels (so petrol/diesel sit at ~50:50 before CNG/electric appear).
+  function pickFuel() {
+    const open = state.laneFuels;
+    if (open.includes("WASH") && Math.random() < CONFIG.dirtyChance) return "WASH";
+    const others = open.filter((f) => f !== "WASH");
+    return others[Math.floor(Math.random() * others.length)];
+  }
+
   function spawnCar() {
     // From the police level on, a share of arrivals are police cars: no fuel,
     // park at any free non-wash station. Otherwise pick a deliverable fuel
@@ -482,8 +497,7 @@
       fuel = "POLICE"; // sentinel; never matches a lane fuel
     } else {
       isPolice = false;
-      const fuels = state.laneFuels;
-      fuel = fuels[Math.floor(Math.random() * fuels.length)];
+      fuel = pickFuel();
       model = modelForFuel(fuel);
     }
 
@@ -624,6 +638,12 @@
     }
     if (evt.key === "b" || evt.key === "B") {
       jumpToLevel(Math.max(1, state.level - 1));
+      return true;
+    }
+    // End the level now (E) to reach the result screen without waiting out the
+    // timer. Unlike N (which jumps straight in), this shows the announcements.
+    if (evt.key === "e" || evt.key === "E") {
+      if (state.phase === "playing") state.timeLeft = 0;
       return true;
     }
     return false;
@@ -843,7 +863,7 @@
     ctx.textAlign = "left";
     ctx.textBaseline = "bottom";
     ctx.fillText(
-      "DEV: 1-9/0 jump to level · N next · B back",
+      "DEV: 1-9/0 jump to level · N next · B back · E end level",
       12,
       CONFIG.canvas.height - 8
     );
