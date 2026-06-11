@@ -13,6 +13,7 @@ A 2D top-down time-management browser game built with **pure Vanilla JavaScript,
 | Škoda Octavia G-TEC | CNG | Blue |
 | Škoda Enyaq | Electric (BEV) | Green |
 | Dirty car (brown) | A wash | Carwash |
+| Police car (blue, lights) | Any free station except the carwash | — |
 
 ## Modes
 
@@ -38,7 +39,7 @@ When a run ends — either by running out of lives or by finishing level 10 — 
 - Each **level lasts 60 seconds**, then a result screen shows your stats; press Enter to continue. Lives and score carry across levels.
 - **Level 1** is gentle — one car on the road at a time. From level 2 on, cars arrive more frequently and drive faster.
 - **Stations unlock over time:** Red (Petrol) and Black (Diesel) from the start, the **Carwash at level 3** (dirty brown cars start arriving then), **Blue (CNG) at level 6**, and **Green (BEV/Electric) at level 9**. Only cars whose station is open will appear.
-- **Level 10 is a doubled finale:** every open kind gets two stations/lanes (10 lanes in all).
+- **Level 10 adds police cars:** mixed in among the regular traffic, a police car has no fuel — steer it into **any free station of any kind except the carwash**. Park it on an occupied station or in the wash and it's a miss (−1 life); a clean park scores +1.
 
 ## Run it
 

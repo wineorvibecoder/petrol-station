@@ -71,9 +71,14 @@
       { fuel: "ELECTRIC", unlockLevel: 9 },
     ],
 
-    // On these levels every open kind gets two stations/lanes instead of one
-    // (e.g. Petrol, Petrol, Diesel, Diesel). Level 10 is the doubled finale.
-    doubleLevels: [10],
+    // Police cars: a finale twist. They have no fuel — steer one into any
+    // FREE station of any kind EXCEPT the carwash. Parking it on an occupied
+    // station, or in the carwash, is a miss (-1 life). A good park scores +1.
+    police: {
+      fromLevel: 10,    // police cars start appearing at this level
+      chance: 0.35,     // share of spawns that are police (when eligible)
+      color: "#1f2d5a", // dark police blue
+    },
 
     carModels: {
       ENYAQ:   { name: "Enyaq",   fuel: "ELECTRIC" },
@@ -181,18 +186,11 @@
   /* =========================================================================
      STATION UNLOCKS
      ========================================================================= */
-  // Lanes (top-to-bottom) for the given level: every open fuel, doubled on
-  // the configured "double" levels (each kind gets two adjacent stations).
+  // Lanes (top-to-bottom) for the given level: every open fuel, one per kind.
   function activeFuels(level) {
-    const open = CONFIG.stations
+    return CONFIG.stations
       .filter((s) => level >= s.unlockLevel)
       .map((s) => s.fuel);
-
-    if (!CONFIG.doubleLevels.includes(level)) return open;
-
-    const doubled = [];
-    open.forEach((fuel) => doubled.push(fuel, fuel));
-    return doubled;
   }
 
   // Fuels whose station unlocks exactly at the given level (for announcements).
@@ -252,22 +250,32 @@
      CARS
      ========================================================================= */
   function spawnCar() {
-    // Only spawn cars whose station is currently open, so every car is
-    // deliverable. Pick a fuel from the active set, then its model.
-    const fuels = state.laneFuels;
-    const fuel = fuels[Math.floor(Math.random() * fuels.length)];
-    const modelKey = Object.keys(CONFIG.carModels).find(
-      (k) => CONFIG.carModels[k].fuel === fuel
-    );
-    const model = CONFIG.carModels[modelKey];
+    // From the police level on, a share of arrivals are police cars: no fuel,
+    // park at any free non-wash station. Otherwise pick a deliverable fuel
+    // (its station is open) and the matching model.
+    let model, fuel, isPolice;
+    if (state.level >= CONFIG.police.fromLevel && Math.random() < CONFIG.police.chance) {
+      isPolice = true;
+      model = "Police";
+      fuel = "POLICE"; // sentinel; never matches a lane fuel
+    } else {
+      isPolice = false;
+      const fuels = state.laneFuels;
+      fuel = fuels[Math.floor(Math.random() * fuels.length)];
+      const modelKey = Object.keys(CONFIG.carModels).find(
+        (k) => CONFIG.carModels[k].fuel === fuel
+      );
+      model = CONFIG.carModels[modelKey].name;
+    }
 
     // Enter in a random active lane (player still has to sort most of them).
     const lane = Math.floor(Math.random() * laneCount());
 
     state.cars.push({
       id: state.nextId++,
-      model: model.name,
-      fuel: model.fuel,
+      model: model,
+      fuel: fuel,
+      isPolice: isPolice,
       lane,
       x: -CONFIG.car.width,
       y: laneCenterY(lane) - CONFIG.car.height / 2,
@@ -486,10 +494,20 @@
     car.x += Math.abs(dx) <= step ? dx : Math.sign(dx) * step;
   }
 
+  // True if a lane's station has nobody queued or loading at it right now.
+  function stationFree(lane) {
+    return !state.cars.some(
+      (c) => c.lane === lane && (c.status === "queued" || c.status === "loading")
+    );
+  }
+
   // A driving car has reached the station row. Correct lane -> join the queue;
-  // wrong lane -> miss (lose a life) and pull away.
+  // wrong lane -> miss (lose a life) and pull away. A police car is "correct"
+  // when parked at any FREE station that is not the carwash.
   function arriveAtStation(car) {
-    const correct = state.laneFuels[car.lane] === car.fuel;
+    const correct = car.isPolice
+      ? state.laneFuels[car.lane] !== "WASH" && stationFree(car.lane)
+      : state.laneFuels[car.lane] === car.fuel;
     if (correct) {
       car.result = "correct";
       car.status = "queued"; // slot + loading handled in assignQueueSlots()
@@ -623,10 +641,23 @@
   }
 
   function drawCar(car) {
-    const fuel = CONFIG.fuelTypes[car.fuel];
+    // Police cars have no fuel type; everything else uses its fuel colour.
+    const bodyColor = car.isPolice
+      ? CONFIG.police.color
+      : CONFIG.fuelTypes[car.fuel].color;
 
-    ctx.fillStyle = fuel.color;
+    ctx.fillStyle = bodyColor;
     ctx.fillRect(car.x, car.y, car.width, car.height);
+
+    // Police light bar: red/blue strip across the roof.
+    if (car.isPolice) {
+      const barW = car.width * 0.5;
+      const barX = car.x + (car.width - barW) / 2;
+      ctx.fillStyle = "#d6453b";
+      ctx.fillRect(barX, car.y + 3, barW / 2, 6);
+      ctx.fillStyle = "#3a78c2";
+      ctx.fillRect(barX + barW / 2, car.y + 3, barW / 2, 6);
+    }
 
     // Active (player-controlled) car: outline + steer hints.
     if (car === activeCar()) {
@@ -648,9 +679,10 @@
     ctx.textBaseline = "middle";
     ctx.fillText(car.model, car.x + car.width / 2, car.y + car.height / 2 - 6);
 
-    // Loading countdown — washing for dirty cars, refuelling for the rest.
+    // Loading countdown — parking for police, washing for dirty cars,
+    // refuelling for everything else.
     if (car.status === "loading") {
-      const icon = car.fuel === "WASH" ? "🚿" : "⛽";
+      const icon = car.isPolice ? "🚓" : car.fuel === "WASH" ? "🚿" : "⛽";
       ctx.font = "12px 'Segoe UI', Arial, sans-serif";
       ctx.fillText(
         icon + " " + Math.ceil(car.loadTimer) + "s",
@@ -754,7 +786,7 @@
     }
 
     // Heads-up about what changes next level: a new station kind unlocking
-    // and/or every kind doubled, plus the kid-mode life refill.
+    // and/or police cars arriving, plus the kid-mode life refill.
     const next = state.level + 1;
     const unlocked = fuelsUnlockedAt(next);
     const notices = [];
@@ -763,8 +795,9 @@
         .map((f) => CONFIG.fuelTypes[f].standLabel + " (" + CONFIG.fuelTypes[f].label + ")")
         .join(", ");
       notices.push("New station unlocked: " + names + "!");
-    } else if (CONFIG.doubleLevels.includes(next)) {
-      notices.push("Double stations — two of every kind!");
+    }
+    if (next === CONFIG.police.fromLevel) {
+      notices.push("Police cars! Park them at any free station — not the wash.");
     }
     if (modeConfig().refillPerLevel && state.lives < maxLives()) {
       notices.push("+1 life for finishing the level!");
