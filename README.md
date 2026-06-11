@@ -47,6 +47,10 @@ When a run ends — either by running out of lives or by finishing level 10 — 
 - A **dirty car is a normal model** (Fabia, Kodiaq, Octavia, Enyaq) that's just muddy — it keeps its model name **and its normal paint colour**, but wears brown mud splatter and must go to the carwash. So a red, petrol-coloured car covered in mud still needs the wash, not the red pump — spot the mud, not just the colour. That's the extra challenge.
 - **Level 10 adds police cars** (about 1 in 6 arrivals): a police car has no fuel and is rushing to a case, so it must **pass straight through a station — no loading**. Steer it into **any free station of any kind except the carwash** and it rushes through for +1. If that station is busy (a car is queued or loading there) the police car would be forced to stop in the queue — that's a miss; sending it to the carwash is a miss too. Each miss costs a life.
 
+## Backgrounds
+
+Each lane count has its own painted background (sky, fields, oil pumps, and a widening asphalt road). The road band grows as more stations unlock — 2 lanes early, up to 5 in the finale. `CONFIG.backgrounds` maps each lane count to its image and the painted asphalt band (`roadTop`/`roadBottom` as fractions of canvas height); cars and stations are laid out inside that band so they sit on the road. Lane counts without art fall back to the procedural grey lanes. So far `pozadi_2.png` (the 2-lane stage) is wired in.
+
 ## Run it
 
 Just open `index.html` in a browser (built and tested for Microsoft Edge on Windows 11). No server or build step required.
@@ -56,3 +60,4 @@ Just open `index.html` in a browser (built and tested for Microsoft Edge on Wind
 - `index.html` — entry point and canvas
 - `style.css` — layout and theming
 - `game.js` — game loop, state, input, rendering
+- `pozadi_2.png` — painted background for the 2-lane stage (more per lane count to come)

@@ -49,6 +49,16 @@
     canvas: { width: 960, height: 600 },
     hudHeight: 70,
 
+    // Per-lane-count background art (painterly scenery + asphalt). The road
+    // grows with the number of open stations, so each lane count has its own
+    // image. roadTop/roadBottom mark the painted asphalt band as a fraction of
+    // canvas height: cars and stations are laid out inside it so they sit on
+    // the road. Lane counts without an image fall back to the procedural grey
+    // lanes. (Measured from the art by sampling its centre column.)
+    backgrounds: {
+      2: { src: "pozadi_2.png", roadTop: 0.665, roadBottom: 0.894 },
+    },
+
     fuelTypes: {
       ELECTRIC: { label: "Electric", color: "#4ba82e", standLabel: "Green" },
       PETROL:   { label: "Petrol",   color: "#d6453b", standLabel: "Red"   },
@@ -446,10 +456,43 @@
     return state.laneFuels.length;
   }
 
+  // Background art cache, keyed by lane count. Loaded once at boot; until an
+  // image is ready (or if there's no art for this lane count) the playfield
+  // falls back to procedural grey lanes.
+  const bgCache = {};
+  function preloadBackgrounds() {
+    for (const k in CONFIG.backgrounds) {
+      const img = new Image();
+      const rec = { img: img, ready: false };
+      img.onload = () => { rec.ready = true; };
+      img.src = CONFIG.backgrounds[k].src;
+      bgCache[k] = rec;
+    }
+  }
+  // The loaded background record for the current lane count, or null.
+  function currentBg() {
+    const rec = bgCache[laneCount()];
+    return rec && rec.ready ? rec : null;
+  }
+
+  // Vertical band the lanes occupy. With background art the cars must sit on the
+  // painted asphalt, so we clamp to its road band; otherwise we use the whole
+  // playfield below the HUD.
+  function laneBand() {
+    const cfg = CONFIG.backgrounds[laneCount()];
+    if (cfg && currentBg()) {
+      return {
+        top: cfg.roadTop * CONFIG.canvas.height,
+        bottom: cfg.roadBottom * CONFIG.canvas.height,
+      };
+    }
+    return { top: CONFIG.hudHeight, bottom: CONFIG.canvas.height };
+  }
+
   function laneCenterY(laneIndex) {
-    const top = CONFIG.hudHeight;
-    const laneHeight = (CONFIG.canvas.height - top) / laneCount();
-    return top + laneHeight * laneIndex + laneHeight / 2;
+    const band = laneBand();
+    const laneHeight = (band.bottom - band.top) / laneCount();
+    return band.top + laneHeight * laneIndex + laneHeight / 2;
   }
 
   // X where the stations begin — crossing this resolves a driving car.
@@ -896,29 +939,36 @@
   function drawLanes() {
     const { width } = CONFIG.canvas;
     const goal = goalLineX();
-    const laneHeight =
-      (CONFIG.canvas.height - CONFIG.hudHeight) / laneCount();
+    const band = laneBand();
+    const laneHeight = (band.bottom - band.top) / laneCount();
+    const bg = currentBg();
+
+    // Painted scenery + asphalt fills the whole canvas; the lanes, dashes and
+    // grass are part of the art, so we skip the procedural lane fills below.
+    if (bg) ctx.drawImage(bg.img, 0, 0, CONFIG.canvas.width, CONFIG.canvas.height);
 
     state.laneFuels.forEach((fuelKey, i) => {
       const fuel = CONFIG.fuelTypes[fuelKey];
       const cy = laneCenterY(i);
-      const laneTop = CONFIG.hudHeight + laneHeight * i;
+      const laneTop = band.top + laneHeight * i;
 
-      ctx.fillStyle = i % 2 === 0 ? "#2b2f36" : "#262a30";
-      ctx.fillRect(0, laneTop, width, laneHeight);
+      if (!bg) {
+        ctx.fillStyle = i % 2 === 0 ? "#2b2f36" : "#262a30";
+        ctx.fillRect(0, laneTop, width, laneHeight);
 
-      // Lane centre guide.
-      ctx.strokeStyle = "rgba(255,255,255,0.07)";
-      ctx.lineWidth = 2;
-      ctx.setLineDash([14, 12]);
-      ctx.beginPath();
-      ctx.moveTo(0, cy);
-      ctx.lineTo(goal, cy);
-      ctx.stroke();
-      ctx.setLineDash([]);
+        // Lane centre guide.
+        ctx.strokeStyle = "rgba(255,255,255,0.07)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([14, 12]);
+        ctx.beginPath();
+        ctx.moveTo(0, cy);
+        ctx.lineTo(goal, cy);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
 
       // Station block.
-      ctx.fillStyle = "#30343c";
+      ctx.fillStyle = bg ? "rgba(28,30,34,0.82)" : "#30343c";
       ctx.fillRect(goal, laneTop + 6, CONFIG.station.width, laneHeight - 12);
       ctx.lineWidth = 4;
       ctx.strokeStyle = fuel.color;
@@ -1022,7 +1072,9 @@
   function drawHud() {
     const { width } = CONFIG.canvas;
 
-    ctx.fillStyle = "#1a1d21";
+    // Slightly translucent so the painted sky shows through the top band while
+    // the text stays readable.
+    ctx.fillStyle = "rgba(26,29,33,0.86)";
     ctx.fillRect(0, 0, width, CONFIG.hudHeight);
     ctx.strokeStyle = "#3c424b";
     ctx.lineWidth = 2;
@@ -1501,5 +1553,6 @@
   // start menu where the player picks a language and mode to begin.
   state.lang = loadLang();
   applyDomLanguage();
+  preloadBackgrounds();
   requestAnimationFrame(loop);
 })();
