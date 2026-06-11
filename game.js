@@ -71,12 +71,14 @@
       { fuel: "ELECTRIC", unlockLevel: 9 },
     ],
 
-    // Police cars: a finale twist. They have no fuel — steer one into any
-    // FREE station of any kind EXCEPT the carwash. Parking it on an occupied
-    // station, or in the carwash, is a miss (-1 life). A good park scores +1.
+    // Police cars: a finale twist. They have no fuel and are rushing to a case,
+    // so they must RUSH STRAIGHT THROUGH a station — no loading. Steer one into
+    // any FREE station of any kind except the carwash and it passes through for
+    // +1. If that station is busy (a car queued/loading) the police car is
+    // forced to stop in the queue, or you send it to the wash: that's a miss.
     police: {
       fromLevel: 10,    // police cars start appearing at this level
-      chance: 0.35,     // share of spawns that are police (when eligible)
+      chance: 1 / 6,    // 1 in 6 spawns (one extra type beside the five fuels)
       color: "#1f2d5a", // dark police blue
     },
 
@@ -474,10 +476,8 @@
           car.loadTimer -= dt;
           if (car.loadTimer <= 0) {
             // Finished loading: score the point and pull away.
-            state.score += 1;
-            state.deliveredThisLevel += 1;
             car.status = "leaving";
-            addFlash(car, "#4ba82e", "+1");
+            scoreDelivery(car);
           }
           break;
 
@@ -501,26 +501,50 @@
     );
   }
 
-  // A driving car has reached the station row. Correct lane -> join the queue;
-  // wrong lane -> miss (lose a life) and pull away. A police car is "correct"
-  // when parked at any FREE station that is not the carwash.
+  // A driving car has reached the station row.
+  //   normal car: right fuel -> join the queue; wrong fuel -> miss.
+  //   police car: rushing through, so it never queues. A FREE non-wash station
+  //     lets it pass straight through for +1; a busy station (it would have to
+  //     stop in the queue) or the carwash is a miss.
   function arriveAtStation(car) {
-    const correct = car.isPolice
-      ? state.laneFuels[car.lane] !== "WASH" && stationFree(car.lane)
-      : state.laneFuels[car.lane] === car.fuel;
-    if (correct) {
+    if (car.isPolice) {
+      const canPass = state.laneFuels[car.lane] !== "WASH" && stationFree(car.lane);
+      if (canPass) {
+        car.result = "correct";
+        car.status = "leaving"; // straight out the far side, no loading
+        scoreDelivery(car);
+      } else {
+        missCar(car);
+      }
+      return;
+    }
+
+    if (state.laneFuels[car.lane] === car.fuel) {
       car.result = "correct";
       car.status = "queued"; // slot + loading handled in assignQueueSlots()
     } else {
-      car.result = "wrong";
-      car.status = "leaving";
-      state.lives -= 1;
-      state.missedThisLevel += 1;
-      addFlash(car, "#d6453b", "MISS!");
-      if (state.lives <= 0) {
-        state.lives = 0;
-        state.phase = "gameOver";
-      }
+      missCar(car);
+    }
+  }
+
+  // Award a point and the floating "+1" (police pass-through, or a finished
+  // loading car).
+  function scoreDelivery(car) {
+    state.score += 1;
+    state.deliveredThisLevel += 1;
+    addFlash(car, "#4ba82e", "+1");
+  }
+
+  // Wrong delivery / blocked police: lose a life, flash, pull away, check end.
+  function missCar(car) {
+    car.result = "wrong";
+    car.status = "leaving";
+    state.lives -= 1;
+    state.missedThisLevel += 1;
+    addFlash(car, "#d6453b", "MISS!");
+    if (state.lives <= 0) {
+      state.lives = 0;
+      state.phase = "gameOver";
     }
   }
 
@@ -679,10 +703,10 @@
     ctx.textBaseline = "middle";
     ctx.fillText(car.model, car.x + car.width / 2, car.y + car.height / 2 - 6);
 
-    // Loading countdown — parking for police, washing for dirty cars,
-    // refuelling for everything else.
+    // Loading countdown — washing for dirty cars, refuelling for the rest.
+    // (Police never load: they rush straight through.)
     if (car.status === "loading") {
-      const icon = car.isPolice ? "🚓" : car.fuel === "WASH" ? "🚿" : "⛽";
+      const icon = car.fuel === "WASH" ? "🚿" : "⛽";
       ctx.font = "12px 'Segoe UI', Arial, sans-serif";
       ctx.fillText(
         icon + " " + Math.ceil(car.loadTimer) + "s",
@@ -797,7 +821,7 @@
       notices.push("New station unlocked: " + names + "!");
     }
     if (next === CONFIG.police.fromLevel) {
-      notices.push("Police cars! Park them at any free station — not the wash.");
+      notices.push("Police cars! Wave them through any free station — not the wash.");
     }
     if (modeConfig().refillPerLevel && state.lives < maxLives()) {
       notices.push("+1 life for finishing the level!");
