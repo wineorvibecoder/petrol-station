@@ -429,8 +429,13 @@
   // A dirty car is a random real model that's muddy and must visit the wash.
   // Returns the model so the car can keep that model's normal paint colour
   // (its base fuel) under the mud — the wash is its destination regardless.
+  // Only models whose fuel station is open this level may appear, so the player
+  // never sees a paint colour (e.g. green Enyaq) whose station isn't in play yet.
   function randomDirtyModel() {
-    const models = Object.values(CONFIG.carModels);
+    const openFuels = state.laneFuels.filter((f) => f !== "WASH");
+    const models = Object.values(CONFIG.carModels).filter((m) =>
+      openFuels.includes(m.fuel)
+    );
     return models[Math.floor(Math.random() * models.length)];
   }
 
