@@ -426,11 +426,12 @@
     return key ? CONFIG.carModels[key].name : "";
   }
 
-  // A dirty car is just a random real model that's muddy and must visit the
-  // wash; its name varies (Fabia, Enyaq, …) while its destination is the wash.
-  function randomDirtyModelName() {
-    const names = Object.values(CONFIG.carModels).map((m) => m.name);
-    return names[Math.floor(Math.random() * names.length)];
+  // A dirty car is a random real model that's muddy and must visit the wash.
+  // Returns the model so the car can keep that model's normal paint colour
+  // (its base fuel) under the mud — the wash is its destination regardless.
+  function randomDirtyModel() {
+    const models = Object.values(CONFIG.carModels);
+    return models[Math.floor(Math.random() * models.length)];
   }
 
   /* =========================================================================
@@ -499,7 +500,7 @@
     // From the police level on, a share of arrivals are police cars: no fuel,
     // park at any free non-wash station. Otherwise pick a deliverable fuel
     // (its station is open) and the matching model.
-    let model, fuel, isPolice;
+    let model, fuel, isPolice, baseFuel = null;
     if (state.level >= CONFIG.police.fromLevel && Math.random() < CONFIG.police.chance) {
       isPolice = true;
       model = "Police";
@@ -507,9 +508,15 @@
     } else {
       isPolice = false;
       fuel = pickFuel();
-      // Dirty cars are real models that are muddy; their name varies but they
-      // must go to the wash. Other cars take the model matching their fuel.
-      model = fuel === "WASH" ? randomDirtyModelName() : modelForFuel(fuel);
+      if (fuel === "WASH") {
+        // A dirty car keeps a real model and that model's normal paint colour
+        // (baseFuel) under the mud, but its destination is the wash.
+        const dm = randomDirtyModel();
+        model = dm.name;
+        baseFuel = dm.fuel;
+      } else {
+        model = modelForFuel(fuel);
+      }
     }
 
     // Enter in a random active lane (player still has to sort most of them).
@@ -519,6 +526,7 @@
       id: state.nextId++,
       model: model,
       fuel: fuel,
+      baseFuel: baseFuel, // normal paint colour for a dirty car (else null)
       isPolice: isPolice,
       lane,
       x: -CONFIG.car.width,
@@ -923,9 +931,13 @@
   }
 
   function drawCar(car) {
-    // Police cars have no fuel type; everything else uses its fuel colour.
+    // Police have their own colour; a dirty car wears its model's normal paint
+    // colour (baseFuel) under the mud, so it looks like an ordinary car and the
+    // player must spot the mud; everything else uses its fuel colour.
     const bodyColor = car.isPolice
       ? CONFIG.police.color
+      : car.fuel === "WASH"
+      ? CONFIG.fuelTypes[car.baseFuel].color
       : CONFIG.fuelTypes[car.fuel].color;
 
     ctx.fillStyle = bodyColor;
