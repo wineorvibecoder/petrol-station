@@ -106,8 +106,10 @@
     // Two selectable difficulty modes (chosen on the start menu).
     //   kid    — relaxed: 5 lives, and one life refills after each finished
     //            level (capped at the 5-life maximum).
-    //   racing — for adults: 3 lives, no refills. Same speed as kid for now;
-    //            speedScale is here so it can be tuned later during testing.
+    //   racing — for adults: 3 lives, no refills.
+    // speedRamp scales only the per-level speed increase (level 1 stays at the
+    // base speed for both modes). Kid mode ramps gentler: at 0.75 the level-10
+    // speed is 15% below racing's, with levels 2-9 slowed proportionally.
     modeOrder: ["kid", "racing"],
     modes: {
       kid: {
@@ -115,14 +117,14 @@
         blurb: "Relaxed · 5 lives · +1 life after every level",
         lives: 5,
         refillPerLevel: true,
-        speedScale: 1,
+        speedRamp: 0.75,
       },
       racing: {
         label: "Racing mode",
         blurb: "For grown-ups · 3 lives · no refills",
         lives: 3,
         refillPerLevel: false,
-        speedScale: 1,
+        speedRamp: 1,
       },
     },
 
@@ -234,12 +236,13 @@
      LEVEL TUNING
      ========================================================================= */
   function levelTuning() {
-    const scale = modeConfig().speedScale;
-    const carSpeed =
-      Math.min(
-        CONFIG.perLevel.carSpeedMax,
-        CONFIG.base.carSpeed + (state.level - 1) * CONFIG.perLevel.carSpeedStep
-      ) * scale;
+    // Level 1 is the base speed; each further level adds carSpeedStep, scaled
+    // by the mode's speedRamp so kid mode climbs more gently.
+    const ramp = modeConfig().speedRamp;
+    const carSpeed = Math.min(
+      CONFIG.perLevel.carSpeedMax,
+      CONFIG.base.carSpeed + (state.level - 1) * CONFIG.perLevel.carSpeedStep * ramp
+    );
     const spawnInterval = Math.max(
       CONFIG.perLevel.spawnIntervalMin,
       CONFIG.perLevel.spawnIntervalBase -
