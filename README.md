@@ -20,7 +20,7 @@ A 2D top-down time-management browser game built with **pure Vanilla JavaScript,
 Pick a mode on the start menu (**↑ / ↓** to choose, **Enter** to start):
 
 - **Kid mode** — relaxed: **5 lives**, **+1 life after every finished level** (capped at 5), and a **gentle speed ramp** that only speeds up on quiet levels: it *holds* its speed whenever a new element arrives (carwash, CNG, electric, police), reaching 220 by the finale.
-- **Racing mode** — for grown-ups: **3 lives**, no refills, and a **steeper ramp** up to 300. Both modes start level 1 at the same speed; each mode's per-level car speed is an explicit `speedByLevel` table that's easy to hand-tune.
+- **Racing mode** — for grown-ups: **3 lives**, no refills, and a **faster ramp** (starts at 150, climbs to 300) using the same hold-on-new-element rule. Each mode's per-level car speed is an explicit `speedByLevel` table that's easy to hand-tune.
 
 ## Leaderboard
 

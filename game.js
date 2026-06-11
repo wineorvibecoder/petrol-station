@@ -108,11 +108,11 @@
     //            level (capped at the 5-life maximum).
     //   racing — for adults: 3 lives, no refills.
     // speedByLevel lists the car speed (px/s) for each level, index = level-1,
-    // so it's easy to hand-tune any single level. Kid mode only speeds up on
-    // "quiet" levels and HOLDS its speed whenever something new arrives, so the
+    // so it's easy to hand-tune any single level. Both modes only speed up on
+    // "quiet" levels and HOLD speed whenever something new arrives, so the
     // player isn't hit by faster traffic and a new element at once: holds at
-    // L3 (carwash), L6 (CNG), L9 (electric) and L10 (police), +20 otherwise.
-    // Racing climbs straight to 300.
+    // L3 (carwash), L6 (CNG), L9 (electric) and L10 (police). Kid steps +20
+    // (120 → 220); racing starts faster and steps +30 (150 → 300).
     modeOrder: ["kid", "racing"],
     modes: {
       kid: {
@@ -128,7 +128,8 @@
         blurb: "For grown-ups · 3 lives · no refills",
         lives: 3,
         refillPerLevel: false,
-        speedByLevel: [120, 140, 160, 180, 200, 220, 240, 260, 280, 300],
+        //              L1   L2   L3*  L4   L5   L6*  L7   L8   L9*  L10*  (* = hold)
+        speedByLevel: [150, 180, 180, 210, 240, 240, 270, 300, 300, 300],
       },
     },
 
