@@ -136,6 +136,10 @@
     maxLevel: 10,        // final level; finishing it completes the run
     maxNameLength: 12,   // leaderboard name length cap
 
+    // Selectable UI languages (cycled with ← / → on the start menu). English
+    // labels live in CONFIG above; Czech/German come from TRANSLATIONS below.
+    languages: ["en", "cs", "de"],
+
     // Dev/testing aids. Set to false for a release build to disable the
     // level-skip hotkeys and the on-screen hint.
     debug: true,
@@ -162,6 +166,7 @@
   const state = {
     // 'menu' | 'playing' | 'levelComplete' | 'gameOver' | 'enterName' | 'leaderboard'
     phase: "menu",
+    lang: "en",       // UI language ('en' | 'cs' | 'de'); set on boot
     mode: "kid",      // selected difficulty mode (chosen on the menu)
     menuIndex: 0,     // highlighted mode on the start menu
     nameInput: "",    // current text in the name-entry field
@@ -187,6 +192,206 @@
   }
   function maxLives() {
     return modeConfig().lives;
+  }
+
+  /* =========================================================================
+     I18N  (English source lives in CONFIG / inline; cs + de live here)
+     ========================================================================= */
+  const LANG_NAMES = { en: "English", cs: "Čeština", de: "Deutsch" };
+
+  // Only non-English strings are listed; t() falls back to the English value.
+  const TRANSLATIONS = {
+    en: {
+      title: "Charging & Refueling Station",
+      instructions:
+        "Use ↑ / ↓ to steer the highlighted car into its matching station. Wrong station costs a life!",
+      score: "Score", level: "Level", lives: "Lives",
+      chooseMode: "Choose your mode",
+      menuHint: "↑ / ↓ to choose · Enter to continue",
+      langHint: "← / → language",
+      topScores: "Top scores — {mode}",
+      noScoresMenu: "No scores yet — be the first!",
+      howToPlay: "How to play",
+      brief1: "Cars drive in from the left. Steer the highlighted car",
+      brief2: "(yellow outline) with ↑ / ↓ into its matching station.",
+      brief3: "It loads, then drives off for +1. Wrong station costs a life.",
+      matchThese: "Level 1 — match these:",
+      pressEnterStart: "Press Enter to start",
+      levelComplete: "LEVEL {n} COMPLETE",
+      allComplete: "ALL LEVELS COMPLETE!",
+      deliveredThis: "Delivered this level: {n}",
+      missedThis: "Missed this level: {n}",
+      totalAndLives: "Total score: {s}    ·    Lives: {l}",
+      pressAddScore: "Press Enter to add your score",
+      newStation: "New station unlocked: {names}!",
+      policeNotice: "Police cars! Wave them through any free station — not the wash.",
+      fasterCars: "Faster cars ahead — speed up!",
+      plusLife: "+1 life for finishing the level!",
+      pressEnterLevel: "Press Enter for Level {n}",
+      gameOver: "GAME OVER",
+      finalScore: "Final score: {s}   ·   reached Level {n}",
+      youFinished: "YOU FINISHED!",
+      scoreMode: "Score {s}  ·  {mode}",
+      enterNamePrompt: "Enter your name for the leaderboard:",
+      typeNameSave: "Type your name, then press Enter to save",
+      leaderboard: "Leaderboard — {mode}",
+      noScores: "No scores yet.",
+      lvShort: "Lv {n}",
+      pressEnterMenu: "Press Enter for the menu",
+      miss: "MISS!", policeCar: "Police", dirtyCar: "Dirty",
+    },
+    cs: {
+      title: "Nabíjecí a čerpací stanice",
+      instructions:
+        "Šipkami ↑ / ↓ naveď zvýrazněné auto do správné stanice. Špatná stanice stojí život!",
+      score: "Skóre", level: "Level", lives: "Životy",
+      chooseMode: "Vyber si režim",
+      menuHint: "↑ / ↓ výběr · Enter pokračovat",
+      langHint: "← / → jazyk",
+      topScores: "Nejlepší skóre — {mode}",
+      noScoresMenu: "Zatím žádné skóre — buď první!",
+      howToPlay: "Jak hrát",
+      brief1: "Auta přijíždějí zleva. Naváděj zvýrazněné auto",
+      brief2: "(žlutý rámeček) šipkami ↑ / ↓ do správné stanice.",
+      brief3: "Naloží a odjede za +1. Špatná stanice stojí život.",
+      matchThese: "Level 1 — přiřaď:",
+      pressEnterStart: "Stiskni Enter pro start",
+      levelComplete: "LEVEL {n} HOTOVO",
+      allComplete: "VŠECHNY LEVELY HOTOVO!",
+      deliveredThis: "Odbaveno v tomto levelu: {n}",
+      missedThis: "Chyby v tomto levelu: {n}",
+      totalAndLives: "Celkové skóre: {s}    ·    Životy: {l}",
+      pressAddScore: "Stiskni Enter pro zápis skóre",
+      newStation: "Nová stanice: {names}!",
+      policeNotice: "Policejní auta! Pusť je volnou stanicí — ne do myčky.",
+      fasterCars: "Rychlejší auta — zrychli!",
+      plusLife: "+1 život za dokončení levelu!",
+      pressEnterLevel: "Stiskni Enter pro Level {n}",
+      gameOver: "KONEC HRY",
+      finalScore: "Konečné skóre: {s}   ·   Level {n}",
+      youFinished: "DOKONČENO!",
+      scoreMode: "Skóre {s}  ·  {mode}",
+      enterNamePrompt: "Zadej jméno do žebříčku:",
+      typeNameSave: "Napiš jméno a stiskni Enter pro uložení",
+      leaderboard: "Žebříček — {mode}",
+      noScores: "Zatím žádné skóre.",
+      lvShort: "Lvl {n}",
+      pressEnterMenu: "Stiskni Enter pro menu",
+      miss: "MIMO!", policeCar: "Policie", dirtyCar: "Špinavé",
+      // Fuel + station-colour labels
+      fuel_PETROL: "Benzín", fuel_DIESEL: "Diesel", fuel_CNG: "CNG",
+      fuel_ELECTRIC: "Elektřina", fuel_WASH: "Myčka",
+      stand_PETROL: "Červená", stand_DIESEL: "Černá", stand_CNG: "Modrá",
+      stand_ELECTRIC: "Zelená", stand_WASH: "Mytí",
+      mode_kid: "Dětský režim", mode_racing: "Závodní režim",
+      blurb_kid: "V pohodě · 5 životů · +1 život po každém levelu",
+      blurb_racing: "Pro dospělé · 3 životy · bez doplňování",
+    },
+    de: {
+      title: "Lade- und Tankstelle",
+      instructions:
+        "Mit ↑ / ↓ das markierte Auto in die passende Station lenken. Falsche Station kostet ein Leben!",
+      score: "Punkte", level: "Level", lives: "Leben",
+      chooseMode: "Wähle deinen Modus",
+      menuHint: "↑ / ↓ wählen · Enter weiter",
+      langHint: "← / → Sprache",
+      topScores: "Bestenliste — {mode}",
+      noScoresMenu: "Noch keine Punkte — sei der Erste!",
+      howToPlay: "So wird gespielt",
+      brief1: "Autos kommen von links. Lenke das markierte Auto",
+      brief2: "(gelber Rahmen) mit ↑ / ↓ in die passende Station.",
+      brief3: "Es lädt, fährt weg für +1. Falsche Station kostet ein Leben.",
+      matchThese: "Level 1 — ordne zu:",
+      pressEnterStart: "Enter drücken zum Starten",
+      levelComplete: "LEVEL {n} GESCHAFFT",
+      allComplete: "ALLE LEVEL GESCHAFFT!",
+      deliveredThis: "In diesem Level geschafft: {n}",
+      missedThis: "Fehler in diesem Level: {n}",
+      totalAndLives: "Gesamtpunkte: {s}    ·    Leben: {l}",
+      pressAddScore: "Enter drücken, um dein Ergebnis einzutragen",
+      newStation: "Neue Station: {names}!",
+      policeNotice: "Polizeiautos! Lass sie durch eine freie Station — nicht die Waschanlage.",
+      fasterCars: "Schnellere Autos — beeil dich!",
+      plusLife: "+1 Leben fürs Schaffen des Levels!",
+      pressEnterLevel: "Enter drücken für Level {n}",
+      gameOver: "SPIEL VORBEI",
+      finalScore: "Endpunkte: {s}   ·   Level {n}",
+      youFinished: "GESCHAFFT!",
+      scoreMode: "Punkte {s}  ·  {mode}",
+      enterNamePrompt: "Gib deinen Namen für die Bestenliste ein:",
+      typeNameSave: "Namen eingeben, dann Enter zum Speichern",
+      leaderboard: "Bestenliste — {mode}",
+      noScores: "Noch keine Punkte.",
+      lvShort: "Lvl {n}",
+      pressEnterMenu: "Enter drücken für das Menü",
+      miss: "DANEBEN!", policeCar: "Polizei", dirtyCar: "Schmutzig",
+      fuel_PETROL: "Benzin", fuel_DIESEL: "Diesel", fuel_CNG: "CNG",
+      fuel_ELECTRIC: "Elektro", fuel_WASH: "Waschanlage",
+      stand_PETROL: "Rot", stand_DIESEL: "Schwarz", stand_CNG: "Blau",
+      stand_ELECTRIC: "Grün", stand_WASH: "Wäsche",
+      mode_kid: "Kindermodus", mode_racing: "Rennmodus",
+      blurb_kid: "Entspannt · 5 Leben · +1 Leben pro Level",
+      blurb_racing: "Für Erwachsene · 3 Leben · kein Auffüllen",
+    },
+  };
+
+  // Translate a key with optional {placeholder} substitution; falls back to the
+  // English string, then to the raw key.
+  function t(key, vars) {
+    const table = TRANSLATIONS[state.lang] || TRANSLATIONS.en;
+    let s = key in table ? table[key] : key in TRANSLATIONS.en ? TRANSLATIONS.en[key] : key;
+    if (vars) for (const k in vars) s = s.split("{" + k + "}").join(vars[k]);
+    return s;
+  }
+
+  // Display labels that have an English source in CONFIG and cs/de overrides here.
+  function fuelLabel(fuel) {
+    const o = TRANSLATIONS[state.lang];
+    return (o && o["fuel_" + fuel]) || CONFIG.fuelTypes[fuel].label;
+  }
+  function standLabel(fuel) {
+    const o = TRANSLATIONS[state.lang];
+    return (o && o["stand_" + fuel]) || CONFIG.fuelTypes[fuel].standLabel;
+  }
+  function modeLabel(mode) {
+    const o = TRANSLATIONS[state.lang];
+    return (o && o["mode_" + mode]) || CONFIG.modes[mode].label;
+  }
+  function modeBlurb(mode) {
+    const o = TRANSLATIONS[state.lang];
+    return (o && o["blurb_" + mode]) || CONFIG.modes[mode].blurb;
+  }
+
+  // Persisted language choice.
+  function loadLang() {
+    try {
+      const saved = localStorage.getItem("skoda_lang");
+      if (saved && CONFIG.languages.includes(saved)) return saved;
+    } catch (e) { /* ignore */ }
+    const nav = (navigator.language || "en").slice(0, 2);
+    return CONFIG.languages.includes(nav) ? nav : "en";
+  }
+  function saveLang(lang) {
+    try { localStorage.setItem("skoda_lang", lang); } catch (e) { /* ignore */ }
+  }
+
+  // Push the current language into the HTML header (title + instructions).
+  function applyDomLanguage() {
+    document.title = "Škoda " + t("title");
+    const h1 = document.getElementById("game-title");
+    const instr = document.getElementById("instructions");
+    if (h1) h1.textContent = "Škoda " + t("title");
+    if (instr) instr.textContent = t("instructions");
+    document.documentElement.lang = state.lang;
+  }
+
+  // Step the language by +1 / -1 (wraps), persist it, and refresh the header.
+  function cycleLanguage(dir) {
+    const langs = CONFIG.languages;
+    const i = (langs.indexOf(state.lang) + dir + langs.length) % langs.length;
+    state.lang = langs[i];
+    saveLang(state.lang);
+    applyDomLanguage();
   }
 
   /* =========================================================================
@@ -346,6 +551,9 @@
     } else if (evt.key === "ArrowDown") {
       evt.preventDefault();
       state.menuIndex = (state.menuIndex + 1) % n;
+    } else if (evt.key === "ArrowLeft" || evt.key === "ArrowRight") {
+      evt.preventDefault();
+      cycleLanguage(evt.key === "ArrowRight" ? 1 : -1);
     } else if (evt.key === "Enter" || evt.key === " ") {
       evt.preventDefault();
       state.mode = CONFIG.modeOrder[state.menuIndex];
@@ -559,7 +767,7 @@
     car.status = "leaving";
     state.lives -= 1;
     state.missedThisLevel += 1;
-    addFlash(car, "#d6453b", "MISS!");
+    addFlash(car, "#d6453b", t("miss"));
     if (state.lives <= 0) {
       state.lives = 0;
       state.phase = "gameOver";
@@ -676,10 +884,10 @@
       ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(fuel.standLabel, goal + CONFIG.station.width / 2, cy - 9);
+      ctx.fillText(standLabel(fuelKey), goal + CONFIG.station.width / 2, cy - 9);
       ctx.fillStyle = "#aab0b8";
       ctx.font = "13px 'Segoe UI', Arial, sans-serif";
-      ctx.fillText(fuel.label, goal + CONFIG.station.width / 2, cy + 11);
+      ctx.fillText(fuelLabel(fuelKey), goal + CONFIG.station.width / 2, cy + 11);
     });
   }
 
@@ -715,12 +923,17 @@
       ctx.fillText("▼", car.x + car.width / 2, car.y + car.height + 14);
     }
 
-    // Model label.
+    // Model label (Škoda model names stay as-is; police/dirty are localized).
+    const displayName = car.isPolice
+      ? t("policeCar")
+      : car.fuel === "WASH"
+      ? t("dirtyCar")
+      : car.model;
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 14px 'Segoe UI', Arial, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(car.model, car.x + car.width / 2, car.y + car.height / 2 - 6);
+    ctx.fillText(displayName, car.x + car.width / 2, car.y + car.height / 2 - 6);
 
     // Loading countdown — washing for dirty cars, refuelling for the rest.
     // (Police never load: they rush straight through.)
@@ -766,16 +979,16 @@
     ctx.textAlign = "left";
     ctx.fillStyle = "#e8eaed";
     ctx.font = "bold 22px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("Score " + state.score, 20, midY - 9);
+    ctx.fillText(t("score") + " " + state.score, 20, midY - 9);
     ctx.fillStyle = "#9aa0a6";
     ctx.font = "13px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText(modeConfig().label, 20, midY + 13);
+    ctx.fillText(modeLabel(state.mode), 20, midY + 13);
 
     // Level + time (centre).
     ctx.textAlign = "center";
     ctx.fillStyle = "#4ba82e";
     ctx.font = "bold 22px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("Level " + state.level, width / 2, midY - 10);
+    ctx.fillText(t("level") + " " + state.level, width / 2, midY - 10);
     ctx.fillStyle = "#9aa0a6";
     ctx.font = "14px 'Segoe UI', Arial, sans-serif";
     ctx.fillText("⏱ " + Math.ceil(state.timeLeft) + "s", width / 2, midY + 12);
@@ -786,7 +999,7 @@
     let pips = "";
     for (let i = 0; i < maxLives(); i++) pips += i < state.lives ? "● " : "○ ";
     ctx.fillStyle = "#d6453b";
-    ctx.fillText("Lives " + pips.trim(), width - 20, midY);
+    ctx.fillText(t("lives") + " " + pips.trim(), width - 20, midY);
   }
 
   function drawOverlay() {
@@ -806,17 +1019,17 @@
     ctx.fillStyle = "#4ba82e";
     ctx.font = "bold 46px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(
-      finished ? "ALL LEVELS COMPLETE!" : "LEVEL " + state.level + " COMPLETE",
+      finished ? t("allComplete") : t("levelComplete", { n: state.level }),
       width / 2,
       height / 2 - 70
     );
 
     ctx.fillStyle = "#e8eaed";
     ctx.font = "22px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("Delivered this level: " + state.deliveredThisLevel, width / 2, height / 2 - 14);
-    ctx.fillText("Missed this level: " + state.missedThisLevel, width / 2, height / 2 + 18);
+    ctx.fillText(t("deliveredThis", { n: state.deliveredThisLevel }), width / 2, height / 2 - 14);
+    ctx.fillText(t("missedThis", { n: state.missedThisLevel }), width / 2, height / 2 + 18);
     ctx.fillText(
-      "Total score: " + state.score + "    ·    Lives: " + state.lives,
+      t("totalAndLives", { s: state.score, l: state.lives }),
       width / 2,
       height / 2 + 50
     );
@@ -824,7 +1037,7 @@
     if (finished) {
       ctx.fillStyle = "#ffd400";
       ctx.font = "20px 'Segoe UI', Arial, sans-serif";
-      ctx.fillText("Press Enter to add your score", width / 2, height / 2 + 104);
+      ctx.fillText(t("pressAddScore"), width / 2, height / 2 + 104);
       return;
     }
 
@@ -835,18 +1048,18 @@
     const notices = [];
     if (unlocked.length > 0) {
       const names = unlocked
-        .map((f) => CONFIG.fuelTypes[f].standLabel + " (" + CONFIG.fuelTypes[f].label + ")")
+        .map((f) => standLabel(f) + " (" + fuelLabel(f) + ")")
         .join(", ");
-      notices.push("New station unlocked: " + names + "!");
+      notices.push(t("newStation", { names: names }));
     }
     if (next === CONFIG.police.fromLevel) {
-      notices.push("Police cars! Wave them through any free station — not the wash.");
+      notices.push(t("policeNotice"));
     }
     if (levelSpeed(next) > levelSpeed(state.level)) {
-      notices.push("Faster cars ahead — speed up!");
+      notices.push(t("fasterCars"));
     }
     if (modeConfig().refillPerLevel && state.lives < maxLives()) {
-      notices.push("+1 life for finishing the level!");
+      notices.push(t("plusLife"));
     }
 
     ctx.fillStyle = "#4ba82e";
@@ -856,7 +1069,7 @@
     ctx.fillStyle = "#ffd400";
     ctx.font = "20px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(
-      "Press Enter for Level " + next,
+      t("pressEnterLevel", { n: next }),
       width / 2,
       height / 2 + 90 + notices.length * 26 + 14
     );
@@ -868,19 +1081,19 @@
 
     ctx.fillStyle = "#d6453b";
     ctx.font = "bold 48px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("GAME OVER", width / 2, height / 2 - 40);
+    ctx.fillText(t("gameOver"), width / 2, height / 2 - 40);
 
     ctx.fillStyle = "#e8eaed";
     ctx.font = "24px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(
-      "Final score: " + state.score + "   ·   reached Level " + state.level,
+      t("finalScore", { s: state.score, n: state.level }),
       width / 2,
       height / 2 + 12
     );
 
     ctx.fillStyle = "#ffd400";
     ctx.font = "18px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("Press Enter to add your score", width / 2, height / 2 + 56);
+    ctx.fillText(t("pressAddScore"), width / 2, height / 2 + 56);
   }
 
   /* =========================================================================
@@ -893,18 +1106,25 @@
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
+    // Language selector (← / → cycles through the available languages).
+    ctx.fillStyle = "#e8eaed";
+    ctx.font = "bold 20px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("‹  " + LANG_NAMES[state.lang] + "  ›", width / 2, 34);
+    ctx.fillStyle = "#9aa0a6";
+    ctx.font = "13px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText(t("langHint"), width / 2, 58);
+
     ctx.fillStyle = "#4ba82e";
     ctx.font = "bold 40px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("Choose your mode", width / 2, 92);
+    ctx.fillText(t("chooseMode"), width / 2, 96);
 
     ctx.fillStyle = "#9aa0a6";
     ctx.font = "16px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("↑ / ↓ to choose · Enter to start", width / 2, 128);
+    ctx.fillText(t("menuHint"), width / 2, 130);
 
     // Mode cards.
     const cardW = 520, cardH = 78, gap = 18, startY = 170;
     CONFIG.modeOrder.forEach((key, i) => {
-      const m = CONFIG.modes[key];
       const x = width / 2 - cardW / 2;
       const y = startY + i * (cardH + gap);
       const selected = i === state.menuIndex;
@@ -918,10 +1138,10 @@
       ctx.textAlign = "left";
       ctx.fillStyle = selected ? "#ffd400" : "#e8eaed";
       ctx.font = "bold 24px 'Segoe UI', Arial, sans-serif";
-      ctx.fillText(m.label, x + 22, y + 28);
+      ctx.fillText(modeLabel(key), x + 22, y + 28);
       ctx.fillStyle = "#aab0b8";
       ctx.font = "15px 'Segoe UI', Arial, sans-serif";
-      ctx.fillText(m.blurb, x + 22, y + 54);
+      ctx.fillText(modeBlurb(key), x + 22, y + 54);
     });
 
     // Top scores for the highlighted mode.
@@ -932,12 +1152,12 @@
     ctx.textAlign = "center";
     ctx.fillStyle = "#e8eaed";
     ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("Top scores — " + CONFIG.modes[hlKey].label, width / 2, boardY);
+    ctx.fillText(t("topScores", { mode: modeLabel(hlKey) }), width / 2, boardY);
 
     ctx.font = "15px 'Segoe UI', Arial, sans-serif";
     if (scores.length === 0) {
       ctx.fillStyle = "#9aa0a6";
-      ctx.fillText("No scores yet — be the first!", width / 2, boardY + 30);
+      ctx.fillText(t("noScoresMenu"), width / 2, boardY + 30);
     } else {
       scores.slice(0, 5).forEach((s, i) => {
         ctx.fillStyle = "#cfd3d8";
@@ -961,23 +1181,19 @@
 
     ctx.fillStyle = "#4ba82e";
     ctx.font = "bold 40px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("How to play", width / 2, 60);
+    ctx.fillText(t("howToPlay"), width / 2, 60);
 
     ctx.fillStyle = "#e8eaed";
     ctx.font = "20px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("Cars drive in from the left. Steer the highlighted car", width / 2, 106);
-    ctx.fillText("(yellow outline) with ↑ / ↓ into its matching station.", width / 2, 134);
+    ctx.fillText(t("brief1"), width / 2, 106);
+    ctx.fillText(t("brief2"), width / 2, 134);
     ctx.fillStyle = "#d6453b";
     ctx.font = "18px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText(
-      "It loads, then drives off for +1. Wrong station costs a life.",
-      width / 2,
-      168
-    );
+    ctx.fillText(t("brief3"), width / 2, 168);
 
     ctx.fillStyle = "#9aa0a6";
     ctx.font = "16px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("Level 1 — match these:", width / 2, 212);
+    ctx.fillText(t("matchThese"), width / 2, 212);
 
     // Car -> station rows for every kind open at level 1.
     const rowY0 = 262, rowH = 66;
@@ -1021,13 +1237,13 @@
       ctx.fillStyle = "#e8eaed";
       ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
       ctx.textAlign = "left";
-      ctx.fillText(fuel.standLabel + " — " + fuel.label, stX + 12 + sw + 12, cy);
+      ctx.fillText(standLabel(fuelKey) + " — " + fuelLabel(fuelKey), stX + 12 + sw + 12, cy);
     });
 
     ctx.textAlign = "center";
     ctx.fillStyle = "#ffd400";
     ctx.font = "20px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("Press Enter to start", width / 2, height - 48);
+    ctx.fillText(t("pressEnterStart"), width / 2, height - 48);
   }
 
   function drawEnterName() {
@@ -1040,20 +1256,22 @@
 
     ctx.fillStyle = won ? "#4ba82e" : "#d6453b";
     ctx.font = "bold 40px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText(won ? "YOU FINISHED!" : "GAME OVER", width / 2, height / 2 - 130);
+    ctx.fillText(won ? t("youFinished") : t("gameOver"), width / 2, height / 2 - 130);
 
     ctx.fillStyle = "#e8eaed";
     ctx.font = "22px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(
-      "Score " + (res ? res.score : 0) +
-        "  ·  " + CONFIG.modes[res ? res.mode : "kid"].label,
+      t("scoreMode", {
+        s: res ? res.score : 0,
+        mode: modeLabel(res ? res.mode : "kid"),
+      }),
       width / 2,
       height / 2 - 86
     );
 
     ctx.fillStyle = "#9aa0a6";
     ctx.font = "18px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("Enter your name for the leaderboard:", width / 2, height / 2 - 30);
+    ctx.fillText(t("enterNamePrompt"), width / 2, height / 2 - 30);
 
     // Input box with a blinking caret.
     const boxW = 380, boxH = 54;
@@ -1071,7 +1289,7 @@
 
     ctx.fillStyle = "#ffd400";
     ctx.font = "18px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("Type your name, then press Enter to save", width / 2, by + boxH + 36);
+    ctx.fillText(t("typeNameSave"), width / 2, by + boxH + 36);
   }
 
   function drawLeaderboard() {
@@ -1084,12 +1302,12 @@
     ctx.textAlign = "center";
     ctx.fillStyle = "#4ba82e";
     ctx.font = "bold 36px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("Leaderboard — " + CONFIG.modes[modeKey].label, width / 2, 70);
+    ctx.fillText(t("leaderboard", { mode: modeLabel(modeKey) }), width / 2, 70);
 
     if (board.length === 0) {
       ctx.fillStyle = "#9aa0a6";
       ctx.font = "18px 'Segoe UI', Arial, sans-serif";
-      ctx.fillText("No scores yet.", width / 2, 140);
+      ctx.fillText(t("noScores"), width / 2, 140);
     }
 
     const rowH = 34, startY = 130;
@@ -1103,14 +1321,14 @@
       ctx.fillText(i + 1 + ".", width / 2 - 230, y);
       ctx.fillText(s.name, width / 2 - 190, y);
       ctx.textAlign = "right";
-      ctx.fillText("Lv " + s.level, width / 2 + 120, y);
+      ctx.fillText(t("lvShort", { n: s.level }), width / 2 + 120, y);
       ctx.fillText(String(s.score), width / 2 + 230, y);
     });
 
     ctx.textAlign = "center";
     ctx.fillStyle = "#ffd400";
     ctx.font = "18px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("Press Enter for the menu", width / 2, height - 36);
+    ctx.fillText(t("pressEnterMenu"), width / 2, height - 36);
   }
 
   /* =========================================================================
@@ -1220,6 +1438,9 @@
     requestAnimationFrame(loop);
   }
 
-  // Boot straight to the start menu; the player picks a mode to begin.
+  // Boot: restore the saved/detected language, sync the header, then show the
+  // start menu where the player picks a language and mode to begin.
+  state.lang = loadLang();
+  applyDomLanguage();
   requestAnimationFrame(loop);
 })();

@@ -15,6 +15,10 @@ A 2D top-down time-management browser game built with **pure Vanilla JavaScript,
 | Dirty car (brown) | A wash | Carwash |
 | Police car (blue, lights) | Rush through any free station except the carwash | — |
 
+## Languages
+
+The UI is available in **English, Čeština, and Deutsch**. On the start menu, cycle the language with **← / →**; the choice is remembered in `localStorage` (and a first-time visitor's browser language is detected automatically). Škoda model names stay as-is across languages.
+
 ## Modes
 
 Pick a mode on the start menu (**↑ / ↓** to choose, **Enter** to continue), then a short **how-to-play screen** shows the controls and the stations/cars present at level 1 before the game begins.
