@@ -107,9 +107,9 @@
     //   kid    — relaxed: 5 lives, and one life refills after each finished
     //            level (capped at the 5-life maximum).
     //   racing — for adults: 3 lives, no refills.
-    // speedRamp scales only the per-level speed increase (level 1 stays at the
-    // base speed for both modes). Kid mode ramps gentler: at 0.75 the level-10
-    // speed is 15% below racing's, with levels 2-9 slowed proportionally.
+    // speedByLevel lists the car speed (px/s) for each level, index = level-1,
+    // so it's easy to hand-tune any single level. Kid mode ramps gently
+    // (120 → 160 @5 → 200 @9 → 220 finale); racing climbs to 300.
     modeOrder: ["kid", "racing"],
     modes: {
       kid: {
@@ -117,14 +117,14 @@
         blurb: "Relaxed · 5 lives · +1 life after every level",
         lives: 5,
         refillPerLevel: true,
-        speedRamp: 0.75,
+        speedByLevel: [120, 130, 140, 150, 160, 170, 180, 190, 200, 220],
       },
       racing: {
         label: "Racing mode",
         blurb: "For grown-ups · 3 lives · no refills",
         lives: 3,
         refillPerLevel: false,
-        speedRamp: 1,
+        speedByLevel: [120, 140, 160, 180, 200, 220, 240, 260, 280, 300],
       },
     },
 
@@ -138,10 +138,7 @@
     // Difficulty. Level 1 is event-driven (one driving car at a time); from
     // level 2 onward cars also arrive on a shrinking timer.
     level1SpawnGap: 0.6,       // pause before the next car on level 1
-    base: { carSpeed: 120 },
     perLevel: {
-      carSpeedStep: 20,
-      carSpeedMax: 300,
       spawnIntervalBase: 2.6,  // level 2 interval
       spawnIntervalStep: 0.25, // shrink per level beyond 2
       spawnIntervalMin: 0.9,
@@ -236,13 +233,11 @@
      LEVEL TUNING
      ========================================================================= */
   function levelTuning() {
-    // Level 1 is the base speed; each further level adds carSpeedStep, scaled
-    // by the mode's speedRamp so kid mode climbs more gently.
-    const ramp = modeConfig().speedRamp;
-    const carSpeed = Math.min(
-      CONFIG.perLevel.carSpeedMax,
-      CONFIG.base.carSpeed + (state.level - 1) * CONFIG.perLevel.carSpeedStep * ramp
-    );
+    // Car speed comes straight from the mode's per-level table; levels past the
+    // end of the table (shouldn't happen) reuse the last entry.
+    const speeds = modeConfig().speedByLevel;
+    const idx = Math.min(Math.max(state.level, 1), speeds.length) - 1;
+    const carSpeed = speeds[idx];
     const spawnInterval = Math.max(
       CONFIG.perLevel.spawnIntervalMin,
       CONFIG.perLevel.spawnIntervalBase -
