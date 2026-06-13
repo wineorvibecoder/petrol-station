@@ -51,15 +51,16 @@
 
     // Per-lane-count background art (painterly scenery + asphalt). The road
     // grows with the number of open stations, so each lane count has its own
-    // image. roadTop/roadBottom mark the painted asphalt band as a fraction of
-    // canvas height: cars and stations are laid out inside it so they sit on
-    // the road. Lane counts without an image fall back to the procedural grey
-    // lanes. (Measured from the art by sampling its centre column.)
+    // image. `lanes` lists the centre of each painted lane as a fraction of
+    // canvas height (measured from the art by detecting its lane markings), so
+    // cars and stations sit exactly on the painted lanes — the markings aren't
+    // evenly spaced, so we can't just divide the road band. Lane counts without
+    // an image fall back to evenly spaced procedural grey lanes.
     backgrounds: {
-      2: { src: "pozadi_2.png", roadTop: 0.665, roadBottom: 0.894 },
-      3: { src: "pozadi_3.png", roadTop: 0.580, roadBottom: 0.995 },
-      4: { src: "pozadi_4.png", roadTop: 0.520, roadBottom: 0.890 },
-      5: { src: "pozadi_5.png", roadTop: 0.360, roadBottom: 0.995 },
+      2: { src: "pozadi_2.png", lanes: [0.718, 0.832] },
+      3: { src: "pozadi_3.png", lanes: [0.611, 0.741, 0.871] },
+      4: { src: "pozadi_4.png", lanes: [0.553, 0.631, 0.724, 0.830] },
+      5: { src: "pozadi_5.png", lanes: [0.407, 0.496, 0.599, 0.708, 0.819] },
     },
 
     fuelTypes: {
@@ -478,24 +479,27 @@
     return rec && rec.ready ? rec : null;
   }
 
-  // Vertical band the lanes occupy. With background art the cars must sit on the
-  // painted asphalt, so we clamp to its road band; otherwise we use the whole
+  // Centre Y of a lane. With background art each lane sits on its painted lane
+  // (explicit centres in CONFIG); otherwise lanes are spread evenly across the
   // playfield below the HUD.
-  function laneBand() {
+  function laneCenterY(laneIndex) {
     const cfg = CONFIG.backgrounds[laneCount()];
-    if (cfg && currentBg()) {
-      return {
-        top: cfg.roadTop * CONFIG.canvas.height,
-        bottom: cfg.roadBottom * CONFIG.canvas.height,
-      };
-    }
-    return { top: CONFIG.hudHeight, bottom: CONFIG.canvas.height };
+    if (cfg && currentBg()) return cfg.lanes[laneIndex] * CONFIG.canvas.height;
+    const top = CONFIG.hudHeight;
+    const laneHeight = (CONFIG.canvas.height - top) / laneCount();
+    return top + laneHeight * laneIndex + laneHeight / 2;
   }
 
-  function laneCenterY(laneIndex) {
-    const band = laneBand();
-    const laneHeight = (band.bottom - band.top) / laneCount();
-    return band.top + laneHeight * laneIndex + laneHeight / 2;
+  // Approximate lane height for drawing lane fills and station boxes. With art
+  // it's the average spacing between painted lane centres; otherwise the even
+  // share of the playfield.
+  function laneThickness() {
+    const cfg = CONFIG.backgrounds[laneCount()];
+    if (cfg && currentBg() && cfg.lanes.length > 1) {
+      const L = cfg.lanes;
+      return ((L[L.length - 1] - L[0]) / (L.length - 1)) * CONFIG.canvas.height;
+    }
+    return (CONFIG.canvas.height - CONFIG.hudHeight) / laneCount();
   }
 
   // X where the stations begin — crossing this resolves a driving car.
@@ -942,8 +946,7 @@
   function drawLanes() {
     const { width } = CONFIG.canvas;
     const goal = goalLineX();
-    const band = laneBand();
-    const laneHeight = (band.bottom - band.top) / laneCount();
+    const laneHeight = laneThickness();
     const bg = currentBg();
 
     // Painted scenery + asphalt fills the whole canvas; the lanes, dashes and
@@ -953,7 +956,7 @@
     state.laneFuels.forEach((fuelKey, i) => {
       const fuel = CONFIG.fuelTypes[fuelKey];
       const cy = laneCenterY(i);
-      const laneTop = band.top + laneHeight * i;
+      const laneTop = cy - laneHeight / 2;
 
       if (!bg) {
         ctx.fillStyle = i % 2 === 0 ? "#2b2f36" : "#262a30";
