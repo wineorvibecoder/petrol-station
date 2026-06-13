@@ -90,6 +90,27 @@
   };
 
   /* =========================================================================
+     TYPE  (modular scale — see DESIGN.md)
+     One family (the system Segoe UI stack). Hierarchy comes from size + weight,
+     not a flat ramp: the scale steps by ~1.27 (13 / 17 / 22 / 28 / 36 / 46).
+     font(role[, weight]) builds a canvas font string; pass a weight only to
+     override the role's default (e.g. a bold variant of a regular-weight row).
+     ========================================================================= */
+  const FONT_STACK = "'Segoe UI', Tahoma, Arial, sans-serif";
+  const TYPE = {
+    display: { size: 46, weight: 700 }, // end screens (level complete, game over)
+    h1:      { size: 36, weight: 700 }, // section titles (how-to, menu, board)
+    lead:    { size: 28, weight: 700 }, // mode names, name-entry value
+    body:    { size: 22, weight: 400 }, // primary body, prompts, HUD numbers
+    label:   { size: 22, weight: 700 }, // labels, notices, emphasised lines
+    caption: { size: 17, weight: 400 }, // secondary text, hints, blurbs
+    small:   { size: 13, weight: 400 }, // smallest sub-labels and hotkey hints
+  };
+  function font(role, weight) {
+    return (weight || role.weight) + " " + role.size + "px " + FONT_STACK;
+  }
+
+  /* =========================================================================
      CONFIG
      ========================================================================= */
   const CONFIG = {
@@ -1066,7 +1087,7 @@
 
   function drawDebugHint() {
     ctx.fillStyle = COLORS.hintFaint;
-    ctx.font = "12px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.small);
     ctx.textAlign = "left";
     ctx.textBaseline = "bottom";
     ctx.fillText(
@@ -1129,12 +1150,12 @@
         ctx.strokeRect(goal, laneTop + 6, CONFIG.station.width, laneHeight - 12);
 
         ctx.fillStyle = fuel.color;
-        ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
+        ctx.font = font(TYPE.label);
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(standLabel(fuelKey), goal + CONFIG.station.width / 2, cy - 9);
         ctx.fillStyle = COLORS.textDim;
-        ctx.font = "13px 'Segoe UI', Arial, sans-serif";
+        ctx.font = font(TYPE.small);
         ctx.fillText(fuelLabel(fuelKey), goal + CONFIG.station.width / 2, cy + 11);
       }
     });
@@ -1221,7 +1242,7 @@
     // Green), with a dark outline so they read on the road and the sky.
     if (car === activeCar()) {
       const cx = car.x + car.width / 2;
-      ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
+      ctx.font = font(TYPE.label);
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.lineWidth = 3;
@@ -1241,7 +1262,7 @@
       const icon = car.fuel === "WASH" ? "🚿" : "⛽";
       const text = icon + " " + Math.ceil(car.loadTimer) + "s";
       const x = car.x + car.width / 2, y = car.y + car.height / 2;
-      ctx.font = "bold 12px 'Segoe UI', Arial, sans-serif";
+      ctx.font = font(TYPE.small, 700);
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.lineWidth = 3;
@@ -1257,7 +1278,7 @@
     if (!f) return;
     ctx.globalAlpha = Math.max(0, Math.min(1, f.life / 0.9));
     ctx.fillStyle = f.color;
-    ctx.font = "bold 22px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.label);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(f.text, f.x, f.y);
@@ -1284,24 +1305,24 @@
     // Score + mode (left).
     ctx.textAlign = "left";
     ctx.fillStyle = COLORS.text;
-    ctx.font = "bold 22px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.label);
     ctx.fillText(t("score") + " " + state.score, 20, midY - 9);
     ctx.fillStyle = COLORS.textDim;
-    ctx.font = "13px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.small);
     ctx.fillText(modeLabel(state.mode), 20, midY + 13);
 
     // Level + time (centre).
     ctx.textAlign = "center";
     ctx.fillStyle = COLORS.electric;
-    ctx.font = "bold 22px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.label);
     ctx.fillText(t("level") + " " + state.level, width / 2, midY - 10);
     ctx.fillStyle = COLORS.textDim;
-    ctx.font = "14px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.small);
     ctx.fillText("⏱ " + Math.ceil(state.timeLeft) + "s", width / 2, midY + 12);
 
     // Lives (right).
     ctx.textAlign = "right";
-    ctx.font = "20px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.body);
     let pips = "";
     for (let i = 0; i < maxLives(); i++) pips += i < state.lives ? "● " : "○ ";
     ctx.fillStyle = COLORS.danger;
@@ -1344,7 +1365,7 @@
       });
 
       ctx.fillStyle = COLORS.text;
-      ctx.font = "26px 'Segoe UI', Arial, sans-serif";
+      ctx.font = font(TYPE.body);
       ctx.textAlign = "center";
       ctx.fillText("→", width / 2 - 30, cy);
 
@@ -1352,7 +1373,7 @@
       if (stRec) drawSpriteContain(stRec, width / 2 + 30, cy, 64, 74);
 
       ctx.fillStyle = COLORS.text;
-      ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
+      ctx.font = font(TYPE.label);
       ctx.textAlign = "left";
       ctx.fillText(standLabel(fuelKey) + " — " + fuelLabel(fuelKey), width / 2 + 70, cy);
     });
@@ -1368,7 +1389,7 @@
     const finished = state.level >= CONFIG.maxLevel;
 
     ctx.fillStyle = COLORS.electric;
-    ctx.font = "bold 46px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.display);
     ctx.fillText(
       finished ? t("allComplete") : t("levelComplete", { n: state.level }),
       width / 2,
@@ -1376,7 +1397,7 @@
     );
 
     ctx.fillStyle = COLORS.text;
-    ctx.font = "22px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.body);
     ctx.fillText(t("deliveredThis", { n: state.deliveredThisLevel }), width / 2, height / 2 - 14);
     ctx.fillText(t("missedThis", { n: state.missedThisLevel }), width / 2, height / 2 + 18);
     ctx.fillText(
@@ -1387,7 +1408,7 @@
 
     if (finished) {
       ctx.fillStyle = COLORS.electric;
-      ctx.font = "20px 'Segoe UI', Arial, sans-serif";
+      ctx.font = font(TYPE.body);
       ctx.fillText(t("pressAddScore"), width / 2, height / 2 + 104);
       return;
     }
@@ -1425,13 +1446,13 @@
         .map((f) => standLabel(f) + " (" + fuelLabel(f) + ")")
         .join(", ");
       ctx.fillStyle = COLORS.electric;
-      ctx.font = "bold 20px 'Segoe UI', Arial, sans-serif";
+      ctx.font = font(TYPE.label);
       ctx.fillText(t("newStation", { names: names }), width / 2, y);
       y = drawUnlockGraphic(unlocked, y + 16);
     }
 
     ctx.fillStyle = COLORS.electric;
-    ctx.font = "bold 20px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.label);
     notices.forEach((n) => {
       ctx.fillText(n, width / 2, y);
       y += 26;
@@ -1439,7 +1460,7 @@
 
     y += 14;
     ctx.fillStyle = COLORS.electric;
-    ctx.font = "20px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.body);
     ctx.fillText(t("pressEnterLevel", { n: next }), width / 2, y);
   }
 
@@ -1448,11 +1469,11 @@
     drawOverlay();
 
     ctx.fillStyle = COLORS.danger;
-    ctx.font = "bold 48px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.display);
     ctx.fillText(t("gameOver"), width / 2, height / 2 - 40);
 
     ctx.fillStyle = COLORS.text;
-    ctx.font = "24px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.body);
     ctx.fillText(
       t("finalScore", { s: state.score, n: state.level }),
       width / 2,
@@ -1460,7 +1481,7 @@
     );
 
     ctx.fillStyle = COLORS.electric;
-    ctx.font = "18px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.caption);
     ctx.fillText(t("pressAddScore"), width / 2, height / 2 + 56);
   }
 
@@ -1476,18 +1497,18 @@
 
     // Language selector (← / → cycles through the available languages).
     ctx.fillStyle = COLORS.text;
-    ctx.font = "bold 20px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.label);
     ctx.fillText("‹  " + LANG_NAMES[state.lang] + "  ›", width / 2, 34);
     ctx.fillStyle = COLORS.textDim;
-    ctx.font = "13px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.small);
     ctx.fillText(t("langHint"), width / 2, 58);
 
     ctx.fillStyle = COLORS.electric;
-    ctx.font = "bold 40px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.h1);
     ctx.fillText(t("chooseMode"), width / 2, 96);
 
     ctx.fillStyle = COLORS.textDim;
-    ctx.font = "16px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.caption);
     ctx.fillText(t("menuHint"), width / 2, 130);
 
     // Mode cards.
@@ -1505,10 +1526,10 @@
 
       ctx.textAlign = "left";
       ctx.fillStyle = selected ? COLORS.electric : COLORS.text;
-      ctx.font = "bold 24px 'Segoe UI', Arial, sans-serif";
+      ctx.font = font(TYPE.lead);
       ctx.fillText(modeLabel(key), x + 22, y + 28);
       ctx.fillStyle = COLORS.textDim;
-      ctx.font = "15px 'Segoe UI', Arial, sans-serif";
+      ctx.font = font(TYPE.caption);
       ctx.fillText(modeBlurb(key), x + 22, y + 54);
     });
 
@@ -1519,10 +1540,10 @@
 
     ctx.textAlign = "center";
     ctx.fillStyle = COLORS.text;
-    ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.label);
     ctx.fillText(t("topScores", { mode: modeLabel(hlKey) }), width / 2, boardY);
 
-    ctx.font = "15px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.caption);
     if (scores.length === 0) {
       ctx.fillStyle = COLORS.textDim;
       ctx.fillText(t("noScoresMenu"), width / 2, boardY + 30);
@@ -1556,19 +1577,19 @@
     ctx.textBaseline = "middle";
 
     ctx.fillStyle = COLORS.electric;
-    ctx.font = "bold 40px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.h1);
     ctx.fillText(t("howToPlay"), width / 2, 60);
 
     ctx.fillStyle = COLORS.text;
-    ctx.font = "20px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.body);
     ctx.fillText(t("brief1"), width / 2, 106);
     ctx.fillText(t("brief2"), width / 2, 134);
     ctx.fillStyle = COLORS.danger;
-    ctx.font = "18px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.caption);
     ctx.fillText(t("brief3"), width / 2, 168);
 
     ctx.fillStyle = COLORS.textDim;
-    ctx.font = "16px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.caption);
     ctx.fillText(t("matchThese"), width / 2, 212);
 
     // Car -> station rows for every kind open at level 1, drawn with the real
@@ -1593,13 +1614,13 @@
         ctx.fillRect(carCx - 48, cy - 28, 96, 40);
       }
       ctx.fillStyle = COLORS.textMuted;
-      ctx.font = "bold 14px 'Segoe UI', Arial, sans-serif";
+      ctx.font = font(TYPE.small, 700);
       ctx.textAlign = "center";
       ctx.fillText(modelForFuel(fuelKey), carCx, cy + 30);
 
       // Arrow.
       ctx.fillStyle = COLORS.text;
-      ctx.font = "26px 'Segoe UI', Arial, sans-serif";
+      ctx.font = font(TYPE.body);
       ctx.fillText("→", arrowX, cy);
 
       // Station: real pump sprite (the art identifies the fuel), with the
@@ -1616,14 +1637,14 @@
       }
 
       ctx.fillStyle = COLORS.text;
-      ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
+      ctx.font = font(TYPE.label);
       ctx.textAlign = "left";
       ctx.fillText(standLabel(fuelKey) + " — " + fuelLabel(fuelKey), labelX, cy);
     });
 
     ctx.textAlign = "center";
     ctx.fillStyle = COLORS.electric;
-    ctx.font = "20px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.body);
     ctx.fillText(t("pressEnterStart"), width / 2, height - 48);
   }
 
@@ -1636,11 +1657,11 @@
     ctx.textBaseline = "middle";
 
     ctx.fillStyle = won ? COLORS.electric : COLORS.danger;
-    ctx.font = "bold 40px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.h1);
     ctx.fillText(won ? t("youFinished") : t("gameOver"), width / 2, height / 2 - 130);
 
     ctx.fillStyle = COLORS.text;
-    ctx.font = "22px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.body);
     ctx.fillText(
       t("scoreMode", {
         s: res ? res.score : 0,
@@ -1651,7 +1672,7 @@
     );
 
     ctx.fillStyle = COLORS.textDim;
-    ctx.font = "18px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.caption);
     ctx.fillText(t("enterNamePrompt"), width / 2, height / 2 - 30);
 
     // Input box with a blinking caret.
@@ -1665,11 +1686,11 @@
 
     const caret = Math.floor(Date.now() / 500) % 2 === 0 ? "|" : "";
     ctx.fillStyle = COLORS.textBright;
-    ctx.font = "bold 26px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.lead);
     ctx.fillText(state.nameInput + caret, width / 2, by + boxH / 2);
 
     ctx.fillStyle = COLORS.electric;
-    ctx.font = "18px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.caption);
     ctx.fillText(t("typeNameSave"), width / 2, by + boxH + 36);
   }
 
@@ -1682,12 +1703,12 @@
 
     ctx.textAlign = "center";
     ctx.fillStyle = COLORS.electric;
-    ctx.font = "bold 36px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.h1);
     ctx.fillText(t("leaderboard", { mode: modeLabel(modeKey) }), width / 2, 70);
 
     if (board.length === 0) {
       ctx.fillStyle = COLORS.textDim;
-      ctx.font = "18px 'Segoe UI', Arial, sans-serif";
+      ctx.font = font(TYPE.caption);
       ctx.fillText(t("noScores"), width / 2, 140);
     }
 
@@ -1695,7 +1716,7 @@
     board.forEach((s, i) => {
       const isMe = s === state._lastEntry;
       ctx.fillStyle = isMe ? COLORS.electric : COLORS.text;
-      ctx.font = (isMe ? "bold " : "") + "20px 'Segoe UI', Arial, sans-serif";
+      ctx.font = font(TYPE.body, isMe ? 700 : 400);
       const y = startY + i * rowH;
 
       ctx.textAlign = "left";
@@ -1708,7 +1729,7 @@
 
     ctx.textAlign = "center";
     ctx.fillStyle = COLORS.electric;
-    ctx.font = "18px 'Segoe UI', Arial, sans-serif";
+    ctx.font = font(TYPE.caption);
     ctx.fillText(t("pressEnterMenu"), width / 2, height - 36);
   }
 
