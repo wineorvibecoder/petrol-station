@@ -111,6 +111,29 @@
   }
 
   /* =========================================================================
+     MOTION  (shared easing — see DESIGN.md)
+     Every transition decelerates: exponential ease-out, never bounce/elastic.
+     The outX() curves take a normalised progress (0..1); approach() is the
+     frame-rate-independent open-ended analogue (decays the remaining distance,
+     so velocity is highest at the start and eases to nothing at the target).
+     ========================================================================= */
+  const EASE = {
+    outQuart: (p) => 1 - Math.pow(1 - p, 4),
+    outQuint: (p) => 1 - Math.pow(1 - p, 5),
+    outExpo:  (p) => (p >= 1 ? 1 : 1 - Math.pow(2, -10 * p)),
+    approach: (current, target, dt, rate, snap) => {
+      const next = current + (target - current) * (1 - Math.exp(-rate * dt));
+      return Math.abs(target - next) <= (snap || 0.5) ? target : next;
+    },
+  };
+  const MOTION = {
+    laneRate: 16,    // vertical lane-hop ease-out rate (1/s) — was 520 px/s linear
+    dockRate: 13,    // horizontal queue/dock ease-out rate (1/s) — was 200 px/s
+    flashRise: 30,   // px the +1 / miss text floats up over its life
+    flashLife: 0.9,  // seconds the floating feedback text lives
+  };
+
+  /* =========================================================================
      CONFIG
      ========================================================================= */
   const CONFIG = {
@@ -186,8 +209,8 @@
     car: {
       width: 84,
       height: 40,
-      laneSwitchSpeed: 520, // vertical px/sec when hopping lanes
-      dockSpeed: 200,       // horizontal px/sec while shuffling in a queue
+      // Lane-hop and queue-dock motion now ease out (see MOTION.laneRate /
+      // MOTION.dockRate); only the queue spacing lives here.
       queueGap: 14,         // gap between queued cars
     },
 
@@ -929,10 +952,9 @@
   function moveCars(dt, tuning) {
     for (const car of state.cars) {
       // Vertical lane tween (matters while driving; harmless otherwise).
+      // Ease-out toward the target lane: snappy start, soft settle.
       const targetY = laneCenterY(car.lane) - car.height / 2;
-      const dy = targetY - car.y;
-      const stepY = CONFIG.car.laneSwitchSpeed * dt;
-      car.y += Math.abs(dy) <= stepY ? dy : Math.sign(dy) * stepY;
+      car.y = EASE.approach(car.y, targetY, dt, MOTION.laneRate);
 
       switch (car.status) {
         case "driving":
@@ -941,12 +963,12 @@
           break;
 
         case "queued":
-          // Shuffle horizontally toward the assigned queue slot.
-          stepTowardX(car, car._slotX, CONFIG.car.dockSpeed * dt);
+          // Ease horizontally toward the assigned queue slot.
+          car.x = EASE.approach(car.x, car._slotX, dt, MOTION.dockRate);
           break;
 
         case "loading":
-          stepTowardX(car, bayX(), CONFIG.car.dockSpeed * dt);
+          car.x = EASE.approach(car.x, bayX(), dt, MOTION.dockRate);
           car.loadTimer -= dt;
           if (car.loadTimer <= 0) {
             // Finished loading: score the point and pull away.
@@ -963,10 +985,6 @@
     }
   }
 
-  function stepTowardX(car, targetX, step) {
-    const dx = targetX - car.x;
-    car.x += Math.abs(dx) <= step ? dx : Math.sign(dx) * step;
-  }
 
   // True if a lane's station has nobody queued or loading at it right now.
   function stationFree(lane) {
@@ -1046,12 +1064,16 @@
      FLASH (floating feedback text)
      ========================================================================= */
   function addFlash(car, color, text) {
-    state.flash = { x: car.x + car.width / 2, y: car.y, color, text, life: 0.9 };
+    state.flash = {
+      x: car.x + car.width / 2,
+      y0: car.y,            // anchor; the rise is derived from eased progress
+      color, text,
+      life: MOTION.flashLife,
+    };
   }
   function tickFlash(dt) {
     if (!state.flash) return;
     state.flash.life -= dt;
-    state.flash.y -= 30 * dt;
     if (state.flash.life <= 0) state.flash = null;
   }
 
@@ -1276,12 +1298,17 @@
   function drawFlash() {
     const f = state.flash;
     if (!f) return;
-    ctx.globalAlpha = Math.max(0, Math.min(1, f.life / 0.9));
+    const remaining = f.life / MOTION.flashLife;     // 1 -> 0
+    const progress = 1 - remaining;                  // 0 -> 1
+    // Rise eases out (fast off the mark, then settles); the text holds opaque
+    // and fades only toward the end.
+    const y = f.y0 - MOTION.flashRise * EASE.outExpo(progress);
+    ctx.globalAlpha = Math.max(0, Math.min(1, EASE.outQuart(remaining)));
     ctx.fillStyle = f.color;
     ctx.font = font(TYPE.label);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(f.text, f.x, f.y);
+    ctx.fillText(f.text, f.x, y);
     ctx.globalAlpha = 1;
   }
 
