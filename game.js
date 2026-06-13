@@ -1108,39 +1108,49 @@
   // piling into a jumble.
   const STATION_SCALE = 1.25;
 
+  // Draw a car sprite (cropped to its opaque box) contained and centred within
+  // maxW × maxH at (cx, cy). When `dirty`, mud is painted onto the car body only
+  // ('source-atop'), not the background. Shared by gameplay cars (drawCar) and
+  // the unlock illustration on the level-complete screen.
+  function drawCarContain(rec, cx, cy, maxW, maxH, dirty) {
+    const scale = Math.min(maxW / rec.sw, maxH / rec.sh);
+    const dw = rec.sw * scale, dh = rec.sh * scale;
+    const dx = cx - dw / 2, dy = cy - dh / 2;
+    if (dirty) {
+      mudCanvas.width = Math.ceil(dw);
+      mudCanvas.height = Math.ceil(dh);
+      mudCtx.clearRect(0, 0, mudCanvas.width, mudCanvas.height);
+      mudCtx.drawImage(rec.img, rec.sx, rec.sy, rec.sw, rec.sh, 0, 0, dw, dh);
+      mudCtx.globalCompositeOperation = "source-atop";
+      mudCtx.fillStyle = "rgba(166,124,72,0.92)";
+      MUD_SPOTS.forEach(([fx, fy, fr]) => {
+        mudCtx.beginPath();
+        mudCtx.arc(dw * fx, dh * fy, dh * fr, 0, Math.PI * 2);
+        mudCtx.fill();
+      });
+      mudCtx.globalCompositeOperation = "source-over";
+      ctx.drawImage(mudCanvas, dx, dy);
+    } else {
+      ctx.drawImage(rec.img, rec.sx, rec.sy, rec.sw, rec.sh, dx, dy, dw, dh);
+    }
+  }
+
   function drawCar(car) {
     const sprite = carSprite(car);
     const isDirty = !car.isPolice && car.fuel === "WASH";
 
     if (sprite) {
-      // Crop away transparent padding and scale the car to fit its hitbox
-      // (contain), centred — so every model ends up a consistent on-screen size.
-      // SPRITE_SCALE draws a bit larger than the hitbox for visual presence
-      // while leaving the hitbox (queue spacing/collisions) unchanged.
-      const scale = Math.min(car.width / sprite.sw, car.height / sprite.sh) * SPRITE_SCALE;
-      const dw = sprite.sw * scale, dh = sprite.sh * scale;
-      const dx = car.x + (car.width - dw) / 2;
-      const dy = car.y + (car.height - dh) / 2;
-
-      if (isDirty) {
-        // Draw the sprite into an offscreen buffer, then paint mud with
-        // 'source-atop' so it only lands on the car body, not the background.
-        mudCanvas.width = Math.ceil(dw);
-        mudCanvas.height = Math.ceil(dh);
-        mudCtx.clearRect(0, 0, mudCanvas.width, mudCanvas.height);
-        mudCtx.drawImage(sprite.img, sprite.sx, sprite.sy, sprite.sw, sprite.sh, 0, 0, dw, dh);
-        mudCtx.globalCompositeOperation = "source-atop";
-        mudCtx.fillStyle = "rgba(166,124,72,0.92)";
-        MUD_SPOTS.forEach(([fx, fy, fr]) => {
-          mudCtx.beginPath();
-          mudCtx.arc(dw * fx, dh * fy, dh * fr, 0, Math.PI * 2);
-          mudCtx.fill();
-        });
-        mudCtx.globalCompositeOperation = "source-over";
-        ctx.drawImage(mudCanvas, dx, dy);
-      } else {
-        ctx.drawImage(sprite.img, sprite.sx, sprite.sy, sprite.sw, sprite.sh, dx, dy, dw, dh);
-      }
+      // Contain the cropped sprite into the hitbox, drawn a touch larger
+      // (SPRITE_SCALE) for visual presence while leaving the hitbox (queue
+      // spacing/collisions) unchanged.
+      drawCarContain(
+        sprite,
+        car.x + car.width / 2,
+        car.y + car.height / 2,
+        car.width * SPRITE_SCALE,
+        car.height * SPRITE_SCALE,
+        isDirty
+      );
     } else {
       // Fallback while the sprite is still loading: the old coloured block.
       const bodyColor = car.isPolice
@@ -1259,6 +1269,51 @@
     ctx.textBaseline = "middle";
   }
 
+  // Illustrate the station(s) unlocking next level as car(s) -> pump, the same
+  // style as the level-1 briefing. The carwash has no model of its own, so it
+  // shows the open models as dirty cars (e.g. a muddy Fabia and Kodiaq at L3).
+  // Draws a single row centred at yTop + 36; returns the y past the row.
+  function drawUnlockGraphic(fuels, yTop) {
+    const { width } = CONFIG.canvas;
+    const next = state.level + 1;
+    const cy = yTop + 36;
+
+    ctx.textBaseline = "middle";
+    fuels.forEach((fuelKey) => {
+      // Cars feeding this station: the wash takes every open model (as dirty),
+      // every other station takes its one matching model.
+      const cars =
+        fuelKey === "WASH"
+          ? activeFuels(next)
+              .filter((f) => f !== "WASH")
+              .map((f) => ({ rec: carSprites[modelForFuel(f)], dirty: true }))
+          : [{ rec: carSprites[modelForFuel(fuelKey)], dirty: false }];
+
+      const carsCx = width / 2 - 150;
+      cars.forEach((c, i) => {
+        if (!c.rec || !c.rec.ready) return;
+        const cx = carsCx + (i - (cars.length - 1) / 2) * 96;
+        drawCarContain(c.rec, cx, cy, 92, 46, c.dirty);
+      });
+
+      ctx.fillStyle = "#e8eaed";
+      ctx.font = "26px 'Segoe UI', Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("→", width / 2 - 30, cy);
+
+      const stRec = stationSprite(fuelKey);
+      if (stRec) drawSpriteContain(stRec, width / 2 + 30, cy, 64, 74);
+
+      ctx.fillStyle = "#e8eaed";
+      ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText(standLabel(fuelKey) + " — " + fuelLabel(fuelKey), width / 2 + 70, cy);
+    });
+
+    ctx.textAlign = "center";
+    return yTop + 90;
+  }
+
   function drawLevelComplete() {
     const { width, height } = CONFIG.canvas;
     drawOverlay();
@@ -1294,13 +1349,10 @@
     // police cars arriving, faster traffic, plus the kid-mode life refill.
     const next = state.level + 1;
     const unlocked = fuelsUnlockedAt(next);
+
+    // Text notices. The new-station unlock is named here and then shown
+    // graphically (car -> pump) below, so it isn't repeated as a plain line.
     const notices = [];
-    if (unlocked.length > 0) {
-      const names = unlocked
-        .map((f) => standLabel(f) + " (" + fuelLabel(f) + ")")
-        .join(", ");
-      notices.push(t("newStation", { names: names }));
-    }
     if (next === CONFIG.police.fromLevel) {
       notices.push(t("policeNotice"));
     }
@@ -1316,17 +1368,32 @@
       notices.push(t("plusLife"));
     }
 
-    ctx.fillStyle = "#78faae";
-    ctx.font = "bold 20px 'Segoe UI', Arial, sans-serif";
-    notices.forEach((n, i) => ctx.fillText(n, width / 2, height / 2 + 90 + i * 26));
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    let y = height / 2 + 84;
+
+    // New station: name it, then illustrate the matching car(s) -> the pump.
+    if (unlocked.length > 0) {
+      const names = unlocked
+        .map((f) => standLabel(f) + " (" + fuelLabel(f) + ")")
+        .join(", ");
+      ctx.fillStyle = "#78faae";
+      ctx.font = "bold 20px 'Segoe UI', Arial, sans-serif";
+      ctx.fillText(t("newStation", { names: names }), width / 2, y);
+      y = drawUnlockGraphic(unlocked, y + 16);
+    }
 
     ctx.fillStyle = "#78faae";
+    ctx.font = "bold 20px 'Segoe UI', Arial, sans-serif";
+    notices.forEach((n) => {
+      ctx.fillText(n, width / 2, y);
+      y += 26;
+    });
+
+    y += 14;
+    ctx.fillStyle = "#78faae";
     ctx.font = "20px 'Segoe UI', Arial, sans-serif";
-    ctx.fillText(
-      t("pressEnterLevel", { n: next }),
-      width / 2,
-      height / 2 + 90 + notices.length * 26 + 14
-    );
+    ctx.fillText(t("pressEnterLevel", { n: next }), width / 2, y);
   }
 
   function drawGameOver() {
