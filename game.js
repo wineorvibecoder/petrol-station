@@ -238,7 +238,7 @@
       noScoresMenu: "No scores yet — be the first!",
       howToPlay: "How to play",
       brief1: "Cars drive in from the left. Steer the highlighted car",
-      brief2: "(yellow outline) with ↑ / ↓ into its matching station.",
+      brief2: "(marked with green ▲▼) with ↑ / ↓ into its matching station.",
       brief3: "It loads, then drives off for +1. Wrong station costs a life.",
       matchThese: "Level 1 — match these:",
       pressEnterStart: "Press Enter to start",
@@ -277,7 +277,7 @@
       noScoresMenu: "Zatím žádné skóre — buď první!",
       howToPlay: "Jak hrát",
       brief1: "Auta přijíždějí zleva. Naváděj zvýrazněné auto",
-      brief2: "(žlutý rámeček) šipkami ↑ / ↓ do správné stanice.",
+      brief2: "(značené zelenými ▲▼) šipkami ↑ / ↓ do správné stanice.",
       brief3: "Naloží a odjede za +1. Špatná stanice stojí život.",
       matchThese: "Level 1 — přiřaď:",
       pressEnterStart: "Stiskni Enter pro start",
@@ -324,7 +324,7 @@
       noScoresMenu: "Noch keine Punkte — sei der Erste!",
       howToPlay: "So wird gespielt",
       brief1: "Autos kommen von links. Lenke das markierte Auto",
-      brief2: "(gelber Rahmen) mit ↑ / ↓ in die passende Station.",
+      brief2: "(mit grünen ▲▼ markiert) mit ↑ / ↓ in die passende Station.",
       brief3: "Es lädt, fährt weg für +1. Falsche Station kostet ein Leben.",
       matchThese: "Level 1 — ordne zu:",
       pressEnterStart: "Enter drücken zum Starten",
@@ -1277,7 +1277,7 @@
     );
 
     if (finished) {
-      ctx.fillStyle = "#ffd400";
+      ctx.fillStyle = "#78faae";
       ctx.font = "20px 'Segoe UI', Arial, sans-serif";
       ctx.fillText(t("pressAddScore"), width / 2, height / 2 + 104);
       return;
@@ -1308,7 +1308,7 @@
     ctx.font = "bold 20px 'Segoe UI', Arial, sans-serif";
     notices.forEach((n, i) => ctx.fillText(n, width / 2, height / 2 + 90 + i * 26));
 
-    ctx.fillStyle = "#ffd400";
+    ctx.fillStyle = "#78faae";
     ctx.font = "20px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(
       t("pressEnterLevel", { n: next }),
@@ -1333,7 +1333,7 @@
       height / 2 + 12
     );
 
-    ctx.fillStyle = "#ffd400";
+    ctx.fillStyle = "#78faae";
     ctx.font = "18px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("pressAddScore"), width / 2, height / 2 + 56);
   }
@@ -1378,7 +1378,7 @@
       ctx.strokeRect(x, y, cardW, cardH);
 
       ctx.textAlign = "left";
-      ctx.fillStyle = selected ? "#ffd400" : "#e8eaed";
+      ctx.fillStyle = selected ? "#78faae" : "#e8eaed";
       ctx.font = "bold 24px 'Segoe UI', Arial, sans-serif";
       ctx.fillText(modeLabel(key), x + 22, y + 28);
       ctx.fillStyle = "#aab0b8";
@@ -1412,6 +1412,14 @@
     }
   }
 
+  // Draw a preloaded sprite record (cropped to its opaque box) contained and
+  // centred within maxW × maxH at (cx, cy). Used by the briefing's car/pump rows.
+  function drawSpriteContain(rec, cx, cy, maxW, maxH) {
+    const scale = Math.min(maxW / rec.sw, maxH / rec.sh);
+    const dw = rec.sw * scale, dh = rec.sh * scale;
+    ctx.drawImage(rec.img, rec.sx, rec.sy, rec.sw, rec.sh, cx - dw / 2, cy - dh / 2, dw, dh);
+  }
+
   // Level-1 how-to-play box: the controls plus the stations and cars present
   // at the start (later levels announce their new arrivals on the result screen).
   function drawBriefing() {
@@ -1437,53 +1445,58 @@
     ctx.font = "16px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("matchThese"), width / 2, 212);
 
-    // Car -> station rows for every kind open at level 1.
-    const rowY0 = 262, rowH = 66;
-    const carW = 96, carH = 40;
-    const carX = width / 2 - 250;
+    // Car -> station rows for every kind open at level 1, drawn with the real
+    // car and pump sprites so the briefing matches what's on the road. Sprites
+    // fall back to a fuel-coloured swatch if they haven't finished loading.
+    const rowY0 = 258, rowH = 84;
+    const carCx = width / 2 - 230;
     const arrowX = width / 2 - 110;
-    const stX = width / 2 - 50, stW = 260, stH = 48;
+    const stCx = width / 2 - 40;
+    const labelX = width / 2 + 8;
 
     fuels.forEach((fuelKey, i) => {
       const fuel = CONFIG.fuelTypes[fuelKey];
       const cy = rowY0 + i * rowH;
 
-      // Car swatch + model name.
-      ctx.fillStyle = fuel.color;
-      ctx.fillRect(carX, cy - carH / 2, carW, carH);
-      ctx.fillStyle = "#ffffff";
+      // Car: real sprite (cropped/contained) with its model name beneath.
+      const carRec = carSprites[modelForFuel(fuelKey)];
+      if (carRec && carRec.ready) {
+        drawSpriteContain(carRec, carCx, cy - 8, 150, 50);
+      } else {
+        ctx.fillStyle = fuel.color;
+        ctx.fillRect(carCx - 48, cy - 28, 96, 40);
+      }
+      ctx.fillStyle = "#cfd3d8";
       ctx.font = "bold 14px 'Segoe UI', Arial, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(modelForFuel(fuelKey), carX + carW / 2, cy);
+      ctx.fillText(modelForFuel(fuelKey), carCx, cy + 30);
 
       // Arrow.
       ctx.fillStyle = "#e8eaed";
       ctx.font = "26px 'Segoe UI', Arial, sans-serif";
       ctx.fillText("→", arrowX, cy);
 
-      // Station box, outlined in the fuel colour, with a colour swatch so even
-      // dark kinds (Diesel) read clearly against the dark label text.
-      ctx.fillStyle = "#30343c";
-      ctx.fillRect(stX, cy - stH / 2, stW, stH);
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = fuel.color;
-      ctx.strokeRect(stX, cy - stH / 2, stW, stH);
-
-      const sw = 26;
-      ctx.fillStyle = fuel.color;
-      ctx.fillRect(stX + 12, cy - sw / 2, sw, sw);
-      ctx.strokeStyle = "rgba(255,255,255,0.25)";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(stX + 12, cy - sw / 2, sw, sw);
+      // Station: real pump sprite (the art identifies the fuel), with the
+      // colour/fuel label to its right.
+      const stRec = stationSprite(fuelKey);
+      if (stRec) {
+        drawSpriteContain(stRec, stCx, cy, 84, 74);
+      } else {
+        ctx.fillStyle = fuel.color;
+        ctx.fillRect(stCx - 24, cy - 24, 48, 48);
+        ctx.strokeStyle = "rgba(255,255,255,0.25)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(stCx - 24, cy - 24, 48, 48);
+      }
 
       ctx.fillStyle = "#e8eaed";
       ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
       ctx.textAlign = "left";
-      ctx.fillText(standLabel(fuelKey) + " — " + fuelLabel(fuelKey), stX + 12 + sw + 12, cy);
+      ctx.fillText(standLabel(fuelKey) + " — " + fuelLabel(fuelKey), labelX, cy);
     });
 
     ctx.textAlign = "center";
-    ctx.fillStyle = "#ffd400";
+    ctx.fillStyle = "#78faae";
     ctx.font = "20px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("pressEnterStart"), width / 2, height - 48);
   }
@@ -1529,7 +1542,7 @@
     ctx.font = "bold 26px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(state.nameInput + caret, width / 2, by + boxH / 2);
 
-    ctx.fillStyle = "#ffd400";
+    ctx.fillStyle = "#78faae";
     ctx.font = "18px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("typeNameSave"), width / 2, by + boxH + 36);
   }
@@ -1555,7 +1568,7 @@
     const rowH = 34, startY = 130;
     board.forEach((s, i) => {
       const isMe = s === state._lastEntry;
-      ctx.fillStyle = isMe ? "#ffd400" : "#e8eaed";
+      ctx.fillStyle = isMe ? "#78faae" : "#e8eaed";
       ctx.font = (isMe ? "bold " : "") + "20px 'Segoe UI', Arial, sans-serif";
       const y = startY + i * rowH;
 
@@ -1568,7 +1581,7 @@
     });
 
     ctx.textAlign = "center";
-    ctx.fillStyle = "#ffd400";
+    ctx.fillStyle = "#78faae";
     ctx.font = "18px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("pressEnterMenu"), width / 2, height - 36);
   }
