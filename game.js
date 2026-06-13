@@ -1064,7 +1064,7 @@
         mudCtx.clearRect(0, 0, mudCanvas.width, mudCanvas.height);
         mudCtx.drawImage(sprite.img, sprite.sx, sprite.sy, sprite.sw, sprite.sh, 0, 0, dw, dh);
         mudCtx.globalCompositeOperation = "source-atop";
-        mudCtx.fillStyle = "rgba(74,52,28,0.85)";
+        mudCtx.fillStyle = "rgba(166,124,72,0.92)";
         MUD_SPOTS.forEach(([fx, fy, fr]) => {
           mudCtx.beginPath();
           mudCtx.arc(dw * fx, dh * fy, dh * fr, 0, Math.PI * 2);
@@ -1085,7 +1085,7 @@
       ctx.fillStyle = bodyColor;
       ctx.fillRect(car.x, car.y, car.width, car.height);
       if (isDirty) {
-        ctx.fillStyle = "rgba(54,38,20,0.9)";
+        ctx.fillStyle = "rgba(166,124,72,0.92)";
         MUD_SPOTS.forEach(([fx, fy, fr]) => {
           ctx.beginPath();
           ctx.arc(car.x + car.width * fx, car.y + car.height * fy, car.height * fr, 0, Math.PI * 2);
