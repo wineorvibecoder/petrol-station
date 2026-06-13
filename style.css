@@ -56,7 +56,7 @@ body {
 #instructions {
   margin-top: 4px;
   font-size: 0.95rem;
-  color: var(--text-dim);
+  color: #8ec9a9;   /* soft Škoda green, pairs with the electric-green title */
 }
 
 #game-canvas {
