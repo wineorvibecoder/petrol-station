@@ -1039,6 +1039,9 @@
     [0.76, 0.66, 0.11], [0.50, 0.42, 0.08], [0.33, 0.62, 0.08],
   ];
 
+  // Cars are drawn a bit larger than their hitbox so the artwork reads well.
+  const SPRITE_SCALE = 1.2;
+
   function drawCar(car) {
     const sprite = carSprite(car);
     const isDirty = !car.isPolice && car.fuel === "WASH";
@@ -1046,7 +1049,9 @@
     if (sprite) {
       // Crop away transparent padding and scale the car to fit its hitbox
       // (contain), centred — so every model ends up a consistent on-screen size.
-      const scale = Math.min(car.width / sprite.sw, car.height / sprite.sh);
+      // SPRITE_SCALE draws a bit larger than the hitbox for visual presence
+      // while leaving the hitbox (queue spacing/collisions) unchanged.
+      const scale = Math.min(car.width / sprite.sw, car.height / sprite.sh) * SPRITE_SCALE;
       const dw = sprite.sw * scale, dh = sprite.sh * scale;
       const dx = car.x + (car.width - dw) / 2;
       const dy = car.y + (car.height - dh) / 2;
@@ -1102,9 +1107,15 @@
       ctx.fillText("▼", car.x + car.width / 2, car.y + car.height + 16);
     }
 
-    // Helper: text with a dark outline so it stays readable on any car colour.
-    function outlined(text, x, y, font) {
-      ctx.font = font;
+    // Loading countdown — washing for dirty cars, refuelling for the rest.
+    // (Police never load: they rush straight through.) Drawn with a dark
+    // outline so it reads on any car colour. The car itself is identified by
+    // its sprite, so there's no model-name label.
+    if (car.status === "loading") {
+      const icon = car.fuel === "WASH" ? "🚿" : "⛽";
+      const text = icon + " " + Math.ceil(car.loadTimer) + "s";
+      const x = car.x + car.width / 2, y = car.y + car.height / 2;
+      ctx.font = "bold 12px 'Segoe UI', Arial, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.lineWidth = 3;
@@ -1112,19 +1123,6 @@
       ctx.strokeText(text, x, y);
       ctx.fillStyle = "#ffffff";
       ctx.fillText(text, x, y);
-    }
-
-    // Model label, just above the car so it doesn't cover the artwork (a dirty
-    // car keeps its model name — it's just muddy; only police is localized).
-    const displayName = car.isPolice ? t("policeCar") : car.model;
-    outlined(displayName, car.x + car.width / 2, car.y - 7, "bold 13px 'Segoe UI', Arial, sans-serif");
-
-    // Loading countdown — washing for dirty cars, refuelling for the rest.
-    // (Police never load: they rush straight through.)
-    if (car.status === "loading") {
-      const icon = car.fuel === "WASH" ? "🚿" : "⛽";
-      outlined(icon + " " + Math.ceil(car.loadTimer) + "s",
-        car.x + car.width / 2, car.y + car.height / 2, "bold 12px 'Segoe UI', Arial, sans-serif");
     }
   }
 
