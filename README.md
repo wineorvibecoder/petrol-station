@@ -44,7 +44,7 @@ When a run ends — either by running out of lives or by finishing level 10 — 
 - **Level 1** is gentle — one car on the road at a time. From level 2 on, cars arrive more frequently and drive faster.
 - **Stations unlock over time:** Red (Petrol) and Black (Diesel) from the start, the **Carwash at level 3** (dirty brown cars start arriving then), **Blue (CNG) at level 6**, and **Green (BEV/Electric) at level 9**. Only cars whose station is open will appear.
 - **Car mix:** once the carwash is open, **~10% of cars are dirty**; the rest are split evenly across the other open fuels (so Petrol/Diesel stay roughly 50:50). Tunable via `CONFIG.dirtyChance`.
-- A **dirty car is a normal model** (Fabia, Kodiaq, Octavia, Enyaq) that's just muddy — it keeps its model name **and its normal paint colour**, but wears brown mud splatter and must go to the carwash. So a red, petrol-coloured car covered in mud still needs the wash, not the red pump — spot the mud, not just the colour. That's the extra challenge.
+- A **dirty car is a normal model** (Fabia, Kodiaq, Octavia, Enyaq) that's just muddy — it keeps its model name **and its normal paint colour**, but wears brown mud splatter and must go to the carwash. So a red, petrol-coloured car covered in mud still needs the wash, not the red pump — spot the mud, not just the colour. That's the extra challenge. The mud is painted **in code** over the car's normal sprite (masked to the body with `source-atop`), so no separate "dirty" sprites are needed.
 - **Level 10 adds police cars** (about 1 in 6 arrivals): a police car has no fuel and is rushing to a case, so it must **pass straight through a station — no loading**. Steer it into **any free station of any kind except the carwash** and it rushes through for +1. If that station is busy (a car is queued or loading there) the police car would be forced to stop in the queue — that's a miss; sending it to the carwash is a miss too. Each miss costs a life.
 
 ## Backgrounds
@@ -61,3 +61,4 @@ Just open `index.html` in a browser (built and tested for Microsoft Edge on Wind
 - `style.css` — layout and theming
 - `game.js` — game loop, state, input, rendering
 - `pozadi_2.png` … `pozadi_5.png` — painted backgrounds, one per lane count (2–5 lanes)
+- `fabia.png`, `kodiaq.png`, `octavia.png`, `enyaq.png`, `policecar.png` — car sprites (transparent PNGs, facing right; each model's opaque bounds are measured at load so cars scale to a consistent size)

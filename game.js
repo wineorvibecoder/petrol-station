@@ -93,7 +93,8 @@
     police: {
       fromLevel: 10,    // police cars start appearing at this level
       chance: 1 / 6,    // 1 in 6 spawns (one extra type beside the five fuels)
-      color: "#1f2d5a", // dark police blue
+      color: "#1f2d5a", // dark police blue (fallback before the sprite loads)
+      sprite: "policecar.png",
     },
 
     // Once the carwash is open, this share of (non-police) cars are dirty; the
@@ -105,10 +106,10 @@
       // Real Škoda models, each tied to the fuel its station serves. A dirty
       // car is one of THESE models that just happens to be muddy and needs the
       // wash, so there's no separate "dirty" model — see randomDirtyModelName().
-      ENYAQ:   { name: "Enyaq",   fuel: "ELECTRIC" },
-      FABIA:   { name: "Fabia",   fuel: "PETROL"   },
-      KODIAQ:  { name: "Kodiaq",  fuel: "DIESEL"   },
-      OCTAVIA: { name: "Octavia", fuel: "CNG"      },
+      ENYAQ:   { name: "Enyaq",   fuel: "ELECTRIC", sprite: "enyaq.png"   },
+      FABIA:   { name: "Fabia",   fuel: "PETROL",   sprite: "fabia.png"   },
+      KODIAQ:  { name: "Kodiaq",  fuel: "DIESEL",   sprite: "kodiaq.png"  },
+      OCTAVIA: { name: "Octavia", fuel: "CNG",      sprite: "octavia.png" },
     },
 
     car: {
@@ -478,6 +479,47 @@
     const rec = bgCache[laneCount()];
     return rec && rec.ready ? rec : null;
   }
+
+  // Car sprites, keyed by display name ("Fabia", …, "Police"). On load we
+  // measure each sprite's opaque bounding box so we can crop away the
+  // transparent padding and scale every car to a consistent on-screen size.
+  const carSprites = {};
+  function preloadCarSprites() {
+    const sources = { Police: CONFIG.police.sprite };
+    for (const k in CONFIG.carModels) sources[CONFIG.carModels[k].name] = CONFIG.carModels[k].sprite;
+    for (const name in sources) {
+      const img = new Image();
+      const rec = { img: img, ready: false };
+      img.onload = () => {
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        const cx = c.getContext("2d");
+        cx.drawImage(img, 0, 0);
+        const d = cx.getImageData(0, 0, c.width, c.height).data;
+        let minX = c.width, minY = c.height, maxX = 0, maxY = 0;
+        for (let y = 0; y < c.height; y++)
+          for (let x = 0; x < c.width; x++)
+            if (d[(y * c.width + x) * 4 + 3] > 30) {
+              if (x < minX) minX = x; if (x > maxX) maxX = x;
+              if (y < minY) minY = y; if (y > maxY) maxY = y;
+            }
+        rec.sx = minX; rec.sy = minY;
+        rec.sw = maxX - minX + 1; rec.sh = maxY - minY + 1;
+        rec.ready = true;
+      };
+      img.src = sources[name];
+      carSprites[name] = rec;
+    }
+  }
+  function carSprite(car) {
+    const rec = carSprites[car.isPolice ? "Police" : car.model];
+    return rec && rec.ready ? rec : null;
+  }
+
+  // Reusable offscreen canvas for masking mud onto a dirty car's sprite.
+  const mudCanvas = document.createElement("canvas");
+  const mudCtx = mudCanvas.getContext("2d");
 
   // Centre Y of a lane. With background art each lane sits on its painted lane
   // (explicit centres in CONFIG); otherwise lanes are spread evenly across the
@@ -991,41 +1033,60 @@
     });
   }
 
+  // Brown mud blobs (fractions of the drawn sprite rect) for dirty cars.
+  const MUD_SPOTS = [
+    [0.20, 0.55, 0.10], [0.42, 0.70, 0.13], [0.60, 0.50, 0.09],
+    [0.76, 0.66, 0.11], [0.50, 0.42, 0.08], [0.33, 0.62, 0.08],
+  ];
+
   function drawCar(car) {
-    // Police have their own colour; a dirty car wears its model's normal paint
-    // colour (baseFuel) under the mud, so it looks like an ordinary car and the
-    // player must spot the mud; everything else uses its fuel colour.
-    const bodyColor = car.isPolice
-      ? CONFIG.police.color
-      : car.fuel === "WASH"
-      ? CONFIG.fuelTypes[car.baseFuel].color
-      : CONFIG.fuelTypes[car.fuel].color;
+    const sprite = carSprite(car);
+    const isDirty = !car.isPolice && car.fuel === "WASH";
 
-    ctx.fillStyle = bodyColor;
-    ctx.fillRect(car.x, car.y, car.width, car.height);
+    if (sprite) {
+      // Crop away transparent padding and scale the car to fit its hitbox
+      // (contain), centred — so every model ends up a consistent on-screen size.
+      const scale = Math.min(car.width / sprite.sw, car.height / sprite.sh);
+      const dw = sprite.sw * scale, dh = sprite.sh * scale;
+      const dx = car.x + (car.width - dw) / 2;
+      const dy = car.y + (car.height - dh) / 2;
 
-    // Police light bar: red/blue strip across the roof.
-    if (car.isPolice) {
-      const barW = car.width * 0.5;
-      const barX = car.x + (car.width - barW) / 2;
-      ctx.fillStyle = "#d6453b";
-      ctx.fillRect(barX, car.y + 3, barW / 2, 6);
-      ctx.fillStyle = "#3a78c2";
-      ctx.fillRect(barX + barW / 2, car.y + 3, barW / 2, 6);
-    }
-
-    // Dirty car: brown mud splatter over the body so it clearly needs a wash.
-    if (!car.isPolice && car.fuel === "WASH") {
-      ctx.fillStyle = "rgba(54,38,20,0.9)";
-      const spots = [
-        [0.18, 0.30, 4], [0.40, 0.62, 5], [0.62, 0.34, 3],
-        [0.78, 0.60, 4], [0.50, 0.24, 3], [0.30, 0.70, 3],
-      ];
-      spots.forEach(([fx, fy, r]) => {
-        ctx.beginPath();
-        ctx.arc(car.x + car.width * fx, car.y + car.height * fy, r, 0, Math.PI * 2);
-        ctx.fill();
-      });
+      if (isDirty) {
+        // Draw the sprite into an offscreen buffer, then paint mud with
+        // 'source-atop' so it only lands on the car body, not the background.
+        mudCanvas.width = Math.ceil(dw);
+        mudCanvas.height = Math.ceil(dh);
+        mudCtx.clearRect(0, 0, mudCanvas.width, mudCanvas.height);
+        mudCtx.drawImage(sprite.img, sprite.sx, sprite.sy, sprite.sw, sprite.sh, 0, 0, dw, dh);
+        mudCtx.globalCompositeOperation = "source-atop";
+        mudCtx.fillStyle = "rgba(74,52,28,0.85)";
+        MUD_SPOTS.forEach(([fx, fy, fr]) => {
+          mudCtx.beginPath();
+          mudCtx.arc(dw * fx, dh * fy, dh * fr, 0, Math.PI * 2);
+          mudCtx.fill();
+        });
+        mudCtx.globalCompositeOperation = "source-over";
+        ctx.drawImage(mudCanvas, dx, dy);
+      } else {
+        ctx.drawImage(sprite.img, sprite.sx, sprite.sy, sprite.sw, sprite.sh, dx, dy, dw, dh);
+      }
+    } else {
+      // Fallback while the sprite is still loading: the old coloured block.
+      const bodyColor = car.isPolice
+        ? CONFIG.police.color
+        : isDirty
+        ? CONFIG.fuelTypes[car.baseFuel].color
+        : CONFIG.fuelTypes[car.fuel].color;
+      ctx.fillStyle = bodyColor;
+      ctx.fillRect(car.x, car.y, car.width, car.height);
+      if (isDirty) {
+        ctx.fillStyle = "rgba(54,38,20,0.9)";
+        MUD_SPOTS.forEach(([fx, fy, fr]) => {
+          ctx.beginPath();
+          ctx.arc(car.x + car.width * fx, car.y + car.height * fy, car.height * fr, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
     }
 
     // Active (player-controlled) car: outline + steer hints.
@@ -1037,29 +1098,33 @@
       ctx.font = "bold 16px 'Segoe UI', Arial, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("▲", car.x + car.width / 2, car.y - 14);
-      ctx.fillText("▼", car.x + car.width / 2, car.y + car.height + 14);
+      ctx.fillText("▲", car.x + car.width / 2, car.y - 20);
+      ctx.fillText("▼", car.x + car.width / 2, car.y + car.height + 16);
     }
 
-    // Model label: real Škoda model names (a dirty car keeps its model name —
-    // it's just muddy); only the police car uses a localized label.
+    // Helper: text with a dark outline so it stays readable on any car colour.
+    function outlined(text, x, y, font) {
+      ctx.font = font;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(0,0,0,0.7)";
+      ctx.strokeText(text, x, y);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(text, x, y);
+    }
+
+    // Model label, just above the car so it doesn't cover the artwork (a dirty
+    // car keeps its model name — it's just muddy; only police is localized).
     const displayName = car.isPolice ? t("policeCar") : car.model;
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 14px 'Segoe UI', Arial, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(displayName, car.x + car.width / 2, car.y + car.height / 2 - 6);
+    outlined(displayName, car.x + car.width / 2, car.y - 7, "bold 13px 'Segoe UI', Arial, sans-serif");
 
     // Loading countdown — washing for dirty cars, refuelling for the rest.
     // (Police never load: they rush straight through.)
     if (car.status === "loading") {
       const icon = car.fuel === "WASH" ? "🚿" : "⛽";
-      ctx.font = "12px 'Segoe UI', Arial, sans-serif";
-      ctx.fillText(
-        icon + " " + Math.ceil(car.loadTimer) + "s",
-        car.x + car.width / 2,
-        car.y + car.height / 2 + 9
-      );
+      outlined(icon + " " + Math.ceil(car.loadTimer) + "s",
+        car.x + car.width / 2, car.y + car.height / 2, "bold 12px 'Segoe UI', Arial, sans-serif");
     }
   }
 
@@ -1560,5 +1625,6 @@
   state.lang = loadLang();
   applyDomLanguage();
   preloadBackgrounds();
+  preloadCarSprites();
   requestAnimationFrame(loop);
 })();
