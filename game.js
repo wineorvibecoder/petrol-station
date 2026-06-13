@@ -1094,17 +1094,20 @@
       }
     }
 
-    // Active (player-controlled) car: outline + steer hints.
+    // Active (player-controlled) car: steer hints only (▲▼ in Škoda Electric
+    // Green), with a dark outline so they read on the road and the sky.
     if (car === activeCar()) {
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = "#ffd400";
-      ctx.strokeRect(car.x - 2, car.y - 2, car.width + 4, car.height + 4);
-      ctx.fillStyle = "#ffd400";
-      ctx.font = "bold 16px 'Segoe UI', Arial, sans-serif";
+      const cx = car.x + car.width / 2;
+      ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("▲", car.x + car.width / 2, car.y - 20);
-      ctx.fillText("▼", car.x + car.width / 2, car.y + car.height + 16);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(0,0,0,0.55)";
+      ctx.fillStyle = "#78faae";
+      [["▲", car.y - 20], ["▼", car.y + car.height + 16]].forEach(([ch, y]) => {
+        ctx.strokeText(ch, cx, y);
+        ctx.fillText(ch, cx, y);
+      });
     }
 
     // Loading countdown — washing for dirty cars, refuelling for the rest.
