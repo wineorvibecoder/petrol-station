@@ -49,7 +49,7 @@ When a run ends — either by running out of lives or by finishing level 10 — 
 
 ## Backgrounds
 
-Each lane count has its own painted background (sky, fields, oil pumps, and a widening asphalt road). The road band grows as more stations unlock — 2 lanes early, up to 5 in the finale. `CONFIG.backgrounds` maps each lane count to its image and the painted asphalt band (`roadTop`/`roadBottom` as fractions of canvas height); cars and stations are laid out inside that band so they sit on the road. Lane counts without art fall back to the procedural grey lanes. So far `pozadi_2.png` (the 2-lane stage) is wired in.
+Each lane count has its own painted background, and the road band grows as more stations unlock — 2 lanes early, up to 5 in the finale — while the scenery above shrinks (66% → 36% of the canvas). The art is themed to the stations unlocking at that stage: oil pumps (2 lanes), a refinery/CNG plant (3), wind turbines and solar panels (4), and a roadside diner with police cars for the finale (5). `CONFIG.backgrounds` maps each lane count to its image and the painted asphalt band (`roadTop`/`roadBottom` as fractions of canvas height, measured from the art); cars and stations are laid out inside that band so they sit on the road. Lane counts without art fall back to the procedural grey lanes. The `?v=` query on the `game.js` script tag is a cache-buster — bump it when shipping a new build so browsers don't serve a stale game.
 
 ## Run it
 
@@ -60,4 +60,4 @@ Just open `index.html` in a browser (built and tested for Microsoft Edge on Wind
 - `index.html` — entry point and canvas
 - `style.css` — layout and theming
 - `game.js` — game loop, state, input, rendering
-- `pozadi_2.png` — painted background for the 2-lane stage (more per lane count to come)
+- `pozadi_2.png` … `pozadi_5.png` — painted backgrounds, one per lane count (2–5 lanes)

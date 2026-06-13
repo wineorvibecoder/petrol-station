@@ -57,6 +57,9 @@
     // lanes. (Measured from the art by sampling its centre column.)
     backgrounds: {
       2: { src: "pozadi_2.png", roadTop: 0.665, roadBottom: 0.894 },
+      3: { src: "pozadi_3.png", roadTop: 0.580, roadBottom: 0.995 },
+      4: { src: "pozadi_4.png", roadTop: 0.520, roadBottom: 0.890 },
+      5: { src: "pozadi_5.png", roadTop: 0.360, roadBottom: 0.995 },
     },
 
     fuelTypes: {
