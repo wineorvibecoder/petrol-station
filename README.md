@@ -62,3 +62,4 @@ Just open `index.html` in a browser (built and tested for Microsoft Edge on Wind
 - `game.js` — game loop, state, input, rendering
 - `pozadi_2.png` … `pozadi_5.png` — painted backgrounds, one per lane count (2–5 lanes)
 - `fabia.png`, `kodiaq.png`, `octavia.png`, `enyaq.png`, `policecar.png` — car sprites (transparent PNGs, facing right; each model's opaque bounds are measured at load so cars scale to a consistent size)
+- `stand_petrol.png`, `stand_diesel.png`, `stand_cng.png`, `stand_electric.png`, `stand_carwash.png` — station pump sprites (transparent PNGs; opaque bounds measured at load like the cars, then contain-fit into each lane's bay at the road edge — `STATION_SCALE` lets them stand a bit taller than one lane). The pump's colour identifies its fuel, so the old coloured box + label is now only a fallback when a sprite hasn't loaded.

@@ -63,14 +63,17 @@
       5: { src: "pozadi_5.png", lanes: [0.407, 0.496, 0.599, 0.708, 0.819] },
     },
 
+    // Each station has its own painted pump sprite (transparent PNG, measured
+    // for its opaque bbox at load like the cars). The colour is kept as the
+    // gameplay accent / sprite-less fallback border.
     fuelTypes: {
-      ELECTRIC: { label: "Electric", color: "#4ba82e", standLabel: "Green" },
-      PETROL:   { label: "Petrol",   color: "#d6453b", standLabel: "Red"   },
-      DIESEL:   { label: "Diesel",   color: "#454b54", standLabel: "Black" },
-      CNG:      { label: "CNG",      color: "#3a78c2", standLabel: "Blue"  },
-      // The carwash is modelled as just another "fuel": dirty cars (brown for
-      // now; later a normal colour with brown spots) must reach the wash bay.
-      WASH:     { label: "Carwash",  color: "#7a5230", standLabel: "Wash"  },
+      ELECTRIC: { label: "Electric", color: "#4ba82e", standLabel: "Green", sprite: "stand_electric.png" },
+      PETROL:   { label: "Petrol",   color: "#d6453b", standLabel: "Red",   sprite: "stand_petrol.png"   },
+      DIESEL:   { label: "Diesel",   color: "#454b54", standLabel: "Black", sprite: "stand_diesel.png"    },
+      CNG:      { label: "CNG",      color: "#3a78c2", standLabel: "Blue",  sprite: "stand_cng.png"       },
+      // The carwash is modelled as just another "fuel": dirty cars (a normal
+      // colour wearing brown spots) must reach the wash bay.
+      WASH:     { label: "Carwash",  color: "#7a5230", standLabel: "Wash",  sprite: "stand_carwash.png"  },
     },
 
     // Stations in top-to-bottom display order, each with the level at which it
@@ -514,6 +517,43 @@
   }
   function carSprite(car) {
     const rec = carSprites[car.isPolice ? "Police" : car.model];
+    return rec && rec.ready ? rec : null;
+  }
+
+  // Station pump sprites, keyed by fuel key. Like the cars, each sprite's
+  // opaque bounding box is measured at load so the transparent padding is
+  // cropped and every pump scales to a consistent on-screen size.
+  const stationSprites = {};
+  function preloadStationSprites() {
+    for (const key in CONFIG.fuelTypes) {
+      const src = CONFIG.fuelTypes[key].sprite;
+      if (!src) continue;
+      const img = new Image();
+      const rec = { img: img, ready: false };
+      img.onload = () => {
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        const cx = c.getContext("2d");
+        cx.drawImage(img, 0, 0);
+        const d = cx.getImageData(0, 0, c.width, c.height).data;
+        let minX = c.width, minY = c.height, maxX = 0, maxY = 0;
+        for (let y = 0; y < c.height; y++)
+          for (let x = 0; x < c.width; x++)
+            if (d[(y * c.width + x) * 4 + 3] > 30) {
+              if (x < minX) minX = x; if (x > maxX) maxX = x;
+              if (y < minY) minY = y; if (y > maxY) maxY = y;
+            }
+        rec.sx = minX; rec.sy = minY;
+        rec.sw = maxX - minX + 1; rec.sh = maxY - minY + 1;
+        rec.ready = true;
+      };
+      img.src = src;
+      stationSprites[key] = rec;
+    }
+  }
+  function stationSprite(fuelKey) {
+    const rec = stationSprites[fuelKey];
     return rec && rec.ready ? rec : null;
   }
 
@@ -1015,21 +1055,34 @@
         ctx.setLineDash([]);
       }
 
-      // Station block.
-      ctx.fillStyle = bg ? "rgba(28,30,34,0.82)" : "#30343c";
-      ctx.fillRect(goal, laneTop + 6, CONFIG.station.width, laneHeight - 12);
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = fuel.color;
-      ctx.strokeRect(goal, laneTop + 6, CONFIG.station.width, laneHeight - 12);
+      // Station: painted pump sprite if loaded (the art identifies the fuel,
+      // so no box or label), otherwise the procedural coloured box + labels.
+      const stand = stationSprite(fuelKey);
+      if (stand) {
+        const targetW = CONFIG.station.width;
+        const targetH = laneHeight * STATION_SCALE;
+        const scale = Math.min(targetW / stand.sw, targetH / stand.sh);
+        const dw = stand.sw * scale;
+        const dh = stand.sh * scale;
+        const dx = goal + (CONFIG.station.width - dw) / 2;
+        const dy = cy - dh / 2;
+        ctx.drawImage(stand.img, stand.sx, stand.sy, stand.sw, stand.sh, dx, dy, dw, dh);
+      } else {
+        ctx.fillStyle = bg ? "rgba(28,30,34,0.82)" : "#30343c";
+        ctx.fillRect(goal, laneTop + 6, CONFIG.station.width, laneHeight - 12);
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = fuel.color;
+        ctx.strokeRect(goal, laneTop + 6, CONFIG.station.width, laneHeight - 12);
 
-      ctx.fillStyle = fuel.color;
-      ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(standLabel(fuelKey), goal + CONFIG.station.width / 2, cy - 9);
-      ctx.fillStyle = "#aab0b8";
-      ctx.font = "13px 'Segoe UI', Arial, sans-serif";
-      ctx.fillText(fuelLabel(fuelKey), goal + CONFIG.station.width / 2, cy + 11);
+        ctx.fillStyle = fuel.color;
+        ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(standLabel(fuelKey), goal + CONFIG.station.width / 2, cy - 9);
+        ctx.fillStyle = "#aab0b8";
+        ctx.font = "13px 'Segoe UI', Arial, sans-serif";
+        ctx.fillText(fuelLabel(fuelKey), goal + CONFIG.station.width / 2, cy + 11);
+      }
     });
   }
 
@@ -1041,6 +1094,12 @@
 
   // Cars are drawn a bit larger than their hitbox so the artwork reads well.
   const SPRITE_SCALE = 1.2;
+
+  // Pump sprites stand a bit taller than a single lane so they read clearly at
+  // the road's edge (contain-fit into station.width × laneThickness·scale).
+  // Kept modest so the five-lane finale's pumps only lightly overlap instead of
+  // piling into a jumble.
+  const STATION_SCALE = 1.25;
 
   function drawCar(car) {
     const sprite = carSprite(car);
@@ -1627,5 +1686,6 @@
   applyDomLanguage();
   preloadBackgrounds();
   preloadCarSprites();
+  preloadStationSprites();
   requestAnimationFrame(loop);
 })();
