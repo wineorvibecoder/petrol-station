@@ -136,8 +136,9 @@
     // so it's easy to hand-tune any single level. Both modes only speed up on
     // "quiet" levels and HOLD speed whenever something new arrives, so the
     // player isn't hit by faster traffic and a new element at once: holds at
-    // L3 (carwash), L6 (CNG), L9 (electric) and L10 (police). Kid steps +20
-    // (120 → 220); racing starts faster and steps +30 (150 → 300).
+    // L3 (carwash), L6 (CNG), L9 (electric) and L10 (police). Kid holds 130
+    // across L1–3 (L2 only adds more simultaneous traffic, no speed-up) then
+    // steps to 220; racing starts faster and steps +30 (150 → 300).
     modeOrder: ["kid", "racing"],
     modes: {
       kid: {
@@ -146,7 +147,7 @@
         lives: 5,
         refillPerLevel: true,
         //              L1   L2   L3*  L4   L5   L6*  L7   L8   L9*  L10*  (* = hold)
-        speedByLevel: [120, 140, 140, 160, 180, 180, 200, 220, 220, 220],
+        speedByLevel: [130, 130, 130, 160, 180, 180, 200, 220, 220, 220],
       },
       racing: {
         label: "Racing mode",
@@ -250,6 +251,7 @@
       pressAddScore: "Press Enter to add your score",
       newStation: "New station unlocked: {names}!",
       policeNotice: "Police cars! Wave them through any free station — not the wash.",
+      moreCars: "More cars at once — stay sharp!",
       fasterCars: "Faster cars ahead — speed up!",
       plusLife: "+1 life for finishing the level!",
       pressEnterLevel: "Press Enter for Level {n}",
@@ -289,6 +291,7 @@
       pressAddScore: "Stiskni Enter pro zápis skóre",
       newStation: "Nová stanice: {names}!",
       policeNotice: "Policejní auta! Pusť je volnou stanicí — ne do myčky.",
+      moreCars: "Víc aut najednou — dávej pozor!",
       fasterCars: "Rychlejší auta — zrychli!",
       plusLife: "+1 život za dokončení levelu!",
       pressEnterLevel: "Stiskni Enter pro Level {n}",
@@ -336,6 +339,7 @@
       pressAddScore: "Enter drücken, um dein Ergebnis einzutragen",
       newStation: "Neue Station: {names}!",
       policeNotice: "Polizeiautos! Lass sie durch eine freie Station — nicht die Waschanlage.",
+      moreCars: "Mehr Autos gleichzeitig — pass auf!",
       fasterCars: "Schnellere Autos — beeil dich!",
       plusLife: "+1 Leben fürs Schaffen des Levels!",
       pressEnterLevel: "Enter drücken für Level {n}",
@@ -1059,8 +1063,11 @@
       // so no box or label), otherwise the procedural coloured box + labels.
       const stand = stationSprite(fuelKey);
       if (stand) {
-        const targetW = CONFIG.station.width;
-        const targetH = laneHeight * STATION_SCALE;
+        // Pumps are drawn 15% smaller on the early levels (1–5) so the roomier
+        // 2–3 lane layouts don't feel dominated by the tall pump art.
+        const standScale = STATION_SCALE * (state.level <= 5 ? 0.85 : 1);
+        const targetW = CONFIG.station.width * (state.level <= 5 ? 0.85 : 1);
+        const targetH = laneHeight * standScale;
         const scale = Math.min(targetW / stand.sw, targetH / stand.sh);
         const dw = stand.sw * scale;
         const dh = stand.sh * scale;
@@ -1093,7 +1100,7 @@
   ];
 
   // Cars are drawn a bit larger than their hitbox so the artwork reads well.
-  const SPRITE_SCALE = 1.2;
+  const SPRITE_SCALE = 1.44;
 
   // Pump sprites stand a bit taller than a single lane so they read clearly at
   // the road's edge (contain-fit into station.width × laneThickness·scale).
@@ -1296,6 +1303,11 @@
     }
     if (next === CONFIG.police.fromLevel) {
       notices.push(t("policeNotice"));
+    }
+    // Level 1 sends one car at a time; level 2 opens the spawn timer so several
+    // drive at once. Flag that instead of (or alongside) any speed-up.
+    if (next === 2) {
+      notices.push(t("moreCars"));
     }
     if (levelSpeed(next) > levelSpeed(state.level)) {
       notices.push(t("fasterCars"));
