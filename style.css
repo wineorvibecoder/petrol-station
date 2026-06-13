@@ -10,12 +10,15 @@
 }
 
 :root {
-  --electric: #78faae;      /* Škoda Electric Green — accents/headings */
-  --emerald: #0e3a2f;       /* Škoda Emerald Green — frames/chrome */
-  --bg-dark: #082019;       /* very dark emerald — page background */
+  /* Mirrors the COLORS palette in game.js (see DESIGN.md). Neutrals are tinted
+     toward the emerald hue; no pure #fff or #000. */
+  --electric: #78faae;      /* Škoda Electric Green: accents, headings */
+  --emerald: #0e3a2f;       /* Škoda Emerald Green: frames, chrome */
+  --bg-dark: #082019;       /* deepest emerald: page background */
   --panel: #0e3a2f;
-  --text: #e8eaed;
-  --text-dim: #9aa0a6;
+  --text: #e7ece9;          /* primary light text (emerald-tinted) */
+  --text-dim: #97a39c;      /* dim text */
+  --text-soft: #8ec9a9;     /* soft Škoda green: pairs with the electric title */
 }
 
 html, body {
@@ -56,7 +59,7 @@ body {
 #instructions {
   margin-top: 4px;
   font-size: 0.95rem;
-  color: #8ec9a9;   /* soft Škoda green, pairs with the electric-green title */
+  color: var(--text-soft);
 }
 
 #game-canvas {

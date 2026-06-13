@@ -43,6 +43,53 @@
   "use strict";
 
   /* =========================================================================
+     COLORS  (single source of truth — see DESIGN.md)
+     One committed palette: Škoda emerald carries the surface, electric green is
+     the accent. Every neutral is tinted toward the emerald hue (no pure #fff or
+     #000). Station/vehicle colours are a functional gameplay code and keep their
+     hues; they just live here as tokens now. OKLCH equivalents are listed in
+     DESIGN.md; hex is used for the widest canvas-2d compatibility.
+     ========================================================================= */
+  const COLORS = {
+    // Brand greens
+    electric:     "#78faae", // Škoda Electric Green — accents, headings, +1, focus
+    emerald:      "#0e3a2f", // Škoda Emerald Green — canvas surface, panels
+    emeraldLine:  "#1c5c49", // lighter emerald — unselected card borders
+    emeraldDeep:  "#082019", // deepest emerald — page background (mirrors :root)
+
+    // Tinted neutrals (all hued toward emerald, chroma kept low)
+    textBright:   "#eef7f1", // near-white, emerald-tinted (replaces pure #fff)
+    text:         "#e7ece9", // primary light text
+    textMuted:    "#cdd6d1", // secondary text (leaderboard rows)
+    textDim:      "#97a39c", // tertiary / dim hints and sub-labels
+    surface:      "#1f2724", // dark surface A (lane fill, menu card, name box)
+    surfaceAlt:   "#232b27", // dark surface B (alternating lane fill)
+    surfaceBox:   "#283029", // station fallback box
+    surfaceSel:   "#2f3a2a", // selected menu card (greenish)
+
+    // Functional station / vehicle colours (gameplay code — hues unchanged)
+    fuelPetrol:   "#d6453b", // red
+    fuelDiesel:   "#454b54", // black / charcoal
+    fuelCng:      "#3a78c2", // blue
+    fuelElectric: "#4ba82e", // green
+    fuelWash:     "#7a5230", // brown
+    police:       "#1f2d5a", // dark police blue (sprite fallback)
+    danger:       "#d6453b", // game over / miss text (shares the petrol hue)
+
+    // Effects & overlays (emerald- or earth-tinted; no pure black/white)
+    overlay:      "rgba(6,28,22,0.8)",      // dark emerald wash over the playfield
+    hudBand:      "rgba(14,58,47,0.9)",     // translucent emerald HUD band
+    hudLine:      "rgba(120,250,174,0.55)", // electric-green accent line under HUD
+    stationBoxArt:"rgba(20,30,26,0.82)",    // station fallback box over painted art
+    mud:          "rgba(166,124,72,0.92)",  // dirt on dirty cars
+    outline:      "rgba(5,18,14,0.55)",     // text outline on the road (was black)
+    outlineStrong:"rgba(5,18,14,0.72)",     // stronger text outline (was black)
+    laneGuide:    "rgba(231,236,233,0.08)", // dashed lane-centre guide
+    hairline:     "rgba(231,236,233,0.28)", // 1px swatch / element hairline
+    hintFaint:    "rgba(231,236,233,0.32)", // dev hotkey hint
+  };
+
+  /* =========================================================================
      CONFIG
      ========================================================================= */
   const CONFIG = {
@@ -67,13 +114,13 @@
     // for its opaque bbox at load like the cars). The colour is kept as the
     // gameplay accent / sprite-less fallback border.
     fuelTypes: {
-      ELECTRIC: { label: "Electric", color: "#4ba82e", standLabel: "Green", sprite: "stand_electric.png" },
-      PETROL:   { label: "Petrol",   color: "#d6453b", standLabel: "Red",   sprite: "stand_petrol.png"   },
-      DIESEL:   { label: "Diesel",   color: "#454b54", standLabel: "Black", sprite: "stand_diesel.png"    },
-      CNG:      { label: "CNG",      color: "#3a78c2", standLabel: "Blue",  sprite: "stand_cng.png"       },
+      ELECTRIC: { label: "Electric", color: COLORS.fuelElectric, standLabel: "Green", sprite: "stand_electric.png" },
+      PETROL:   { label: "Petrol",   color: COLORS.fuelPetrol,   standLabel: "Red",   sprite: "stand_petrol.png"   },
+      DIESEL:   { label: "Diesel",   color: COLORS.fuelDiesel,   standLabel: "Black", sprite: "stand_diesel.png"    },
+      CNG:      { label: "CNG",      color: COLORS.fuelCng,      standLabel: "Blue",  sprite: "stand_cng.png"       },
       // The carwash is modelled as just another "fuel": dirty cars (a normal
       // colour wearing brown spots) must reach the wash bay.
-      WASH:     { label: "Carwash",  color: "#7a5230", standLabel: "Wash",  sprite: "stand_carwash.png"  },
+      WASH:     { label: "Carwash",  color: COLORS.fuelWash,     standLabel: "Wash",  sprite: "stand_carwash.png"  },
     },
 
     // Stations in top-to-bottom display order, each with the level at which it
@@ -96,7 +143,7 @@
     police: {
       fromLevel: 10,    // police cars start appearing at this level
       chance: 1 / 6,    // 1 in 6 spawns (one extra type beside the five fuels)
-      color: "#1f2d5a", // dark police blue (fallback before the sprite loads)
+      color: COLORS.police, // dark police blue (fallback before the sprite loads)
       sprite: "policecar.png",
     },
 
@@ -938,7 +985,7 @@
   function scoreDelivery(car) {
     state.score += 1;
     state.deliveredThisLevel += 1;
-    addFlash(car, "#78faae", "+1");
+    addFlash(car, COLORS.electric, "+1");
   }
 
   // Wrong delivery / blocked police: lose a life, flash, pull away, check end.
@@ -947,7 +994,7 @@
     car.status = "leaving";
     state.lives -= 1;
     state.missedThisLevel += 1;
-    addFlash(car, "#d6453b", t("miss"));
+    addFlash(car, COLORS.danger, t("miss"));
     if (state.lives <= 0) {
       state.lives = 0;
       state.phase = "gameOver";
@@ -1013,12 +1060,12 @@
 
   function drawBackdrop() {
     const { width, height } = CONFIG.canvas;
-    ctx.fillStyle = "#0e3a2f"; // Škoda emerald green
+    ctx.fillStyle = COLORS.emerald; // Škoda emerald green
     ctx.fillRect(0, 0, width, height);
   }
 
   function drawDebugHint() {
-    ctx.fillStyle = "rgba(255,255,255,0.35)";
+    ctx.fillStyle = COLORS.hintFaint;
     ctx.font = "12px 'Segoe UI', Arial, sans-serif";
     ctx.textAlign = "left";
     ctx.textBaseline = "bottom";
@@ -1045,11 +1092,11 @@
       const laneTop = cy - laneHeight / 2;
 
       if (!bg) {
-        ctx.fillStyle = i % 2 === 0 ? "#2b2f36" : "#262a30";
+        ctx.fillStyle = i % 2 === 0 ? COLORS.surfaceAlt : COLORS.surface;
         ctx.fillRect(0, laneTop, width, laneHeight);
 
         // Lane centre guide.
-        ctx.strokeStyle = "rgba(255,255,255,0.07)";
+        ctx.strokeStyle = COLORS.laneGuide;
         ctx.lineWidth = 2;
         ctx.setLineDash([14, 12]);
         ctx.beginPath();
@@ -1075,7 +1122,7 @@
         const dy = cy - dh / 2;
         ctx.drawImage(stand.img, stand.sx, stand.sy, stand.sw, stand.sh, dx, dy, dw, dh);
       } else {
-        ctx.fillStyle = bg ? "rgba(28,30,34,0.82)" : "#30343c";
+        ctx.fillStyle = bg ? COLORS.stationBoxArt : COLORS.surfaceBox;
         ctx.fillRect(goal, laneTop + 6, CONFIG.station.width, laneHeight - 12);
         ctx.lineWidth = 4;
         ctx.strokeStyle = fuel.color;
@@ -1086,7 +1133,7 @@
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(standLabel(fuelKey), goal + CONFIG.station.width / 2, cy - 9);
-        ctx.fillStyle = "#aab0b8";
+        ctx.fillStyle = COLORS.textDim;
         ctx.font = "13px 'Segoe UI', Arial, sans-serif";
         ctx.fillText(fuelLabel(fuelKey), goal + CONFIG.station.width / 2, cy + 11);
       }
@@ -1122,7 +1169,7 @@
       mudCtx.clearRect(0, 0, mudCanvas.width, mudCanvas.height);
       mudCtx.drawImage(rec.img, rec.sx, rec.sy, rec.sw, rec.sh, 0, 0, dw, dh);
       mudCtx.globalCompositeOperation = "source-atop";
-      mudCtx.fillStyle = "rgba(166,124,72,0.92)";
+      mudCtx.fillStyle = COLORS.mud;
       MUD_SPOTS.forEach(([fx, fy, fr]) => {
         mudCtx.beginPath();
         mudCtx.arc(dw * fx, dh * fy, dh * fr, 0, Math.PI * 2);
@@ -1161,7 +1208,7 @@
       ctx.fillStyle = bodyColor;
       ctx.fillRect(car.x, car.y, car.width, car.height);
       if (isDirty) {
-        ctx.fillStyle = "rgba(166,124,72,0.92)";
+        ctx.fillStyle = COLORS.mud;
         MUD_SPOTS.forEach(([fx, fy, fr]) => {
           ctx.beginPath();
           ctx.arc(car.x + car.width * fx, car.y + car.height * fy, car.height * fr, 0, Math.PI * 2);
@@ -1178,8 +1225,8 @@
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.lineWidth = 3;
-      ctx.strokeStyle = "rgba(0,0,0,0.55)";
-      ctx.fillStyle = "#78faae";
+      ctx.strokeStyle = COLORS.outline;
+      ctx.fillStyle = COLORS.electric;
       [["▲", car.y - 20], ["▼", car.y + car.height + 16]].forEach(([ch, y]) => {
         ctx.strokeText(ch, cx, y);
         ctx.fillText(ch, cx, y);
@@ -1198,9 +1245,9 @@
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.lineWidth = 3;
-      ctx.strokeStyle = "rgba(0,0,0,0.7)";
+      ctx.strokeStyle = COLORS.outlineStrong;
       ctx.strokeText(text, x, y);
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = COLORS.textBright;
       ctx.fillText(text, x, y);
     }
   }
@@ -1222,9 +1269,9 @@
 
     // Emerald-green band, slightly translucent so the painted sky shows through
     // while the text stays readable; an electric-green accent line underneath.
-    ctx.fillStyle = "rgba(14,58,47,0.9)";
+    ctx.fillStyle = COLORS.hudBand;
     ctx.fillRect(0, 0, width, CONFIG.hudHeight);
-    ctx.strokeStyle = "rgba(120,250,174,0.55)";
+    ctx.strokeStyle = COLORS.hudLine;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, CONFIG.hudHeight);
@@ -1236,19 +1283,19 @@
 
     // Score + mode (left).
     ctx.textAlign = "left";
-    ctx.fillStyle = "#e8eaed";
+    ctx.fillStyle = COLORS.text;
     ctx.font = "bold 22px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("score") + " " + state.score, 20, midY - 9);
-    ctx.fillStyle = "#9aa0a6";
+    ctx.fillStyle = COLORS.textDim;
     ctx.font = "13px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(modeLabel(state.mode), 20, midY + 13);
 
     // Level + time (centre).
     ctx.textAlign = "center";
-    ctx.fillStyle = "#78faae";
+    ctx.fillStyle = COLORS.electric;
     ctx.font = "bold 22px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("level") + " " + state.level, width / 2, midY - 10);
-    ctx.fillStyle = "#9aa0a6";
+    ctx.fillStyle = COLORS.textDim;
     ctx.font = "14px 'Segoe UI', Arial, sans-serif";
     ctx.fillText("⏱ " + Math.ceil(state.timeLeft) + "s", width / 2, midY + 12);
 
@@ -1257,13 +1304,13 @@
     ctx.font = "20px 'Segoe UI', Arial, sans-serif";
     let pips = "";
     for (let i = 0; i < maxLives(); i++) pips += i < state.lives ? "● " : "○ ";
-    ctx.fillStyle = "#d6453b";
+    ctx.fillStyle = COLORS.danger;
     ctx.fillText(t("lives") + " " + pips.trim(), width - 20, midY);
   }
 
   function drawOverlay() {
     const { width, height } = CONFIG.canvas;
-    ctx.fillStyle = "rgba(6,28,22,0.8)"; // dark emerald wash
+    ctx.fillStyle = COLORS.overlay; // dark emerald wash
     ctx.fillRect(0, 0, width, height);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -1296,7 +1343,7 @@
         drawCarContain(c.rec, cx, cy, 92, 46, c.dirty);
       });
 
-      ctx.fillStyle = "#e8eaed";
+      ctx.fillStyle = COLORS.text;
       ctx.font = "26px 'Segoe UI', Arial, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText("→", width / 2 - 30, cy);
@@ -1304,7 +1351,7 @@
       const stRec = stationSprite(fuelKey);
       if (stRec) drawSpriteContain(stRec, width / 2 + 30, cy, 64, 74);
 
-      ctx.fillStyle = "#e8eaed";
+      ctx.fillStyle = COLORS.text;
       ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
       ctx.textAlign = "left";
       ctx.fillText(standLabel(fuelKey) + " — " + fuelLabel(fuelKey), width / 2 + 70, cy);
@@ -1320,7 +1367,7 @@
 
     const finished = state.level >= CONFIG.maxLevel;
 
-    ctx.fillStyle = "#78faae";
+    ctx.fillStyle = COLORS.electric;
     ctx.font = "bold 46px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(
       finished ? t("allComplete") : t("levelComplete", { n: state.level }),
@@ -1328,7 +1375,7 @@
       height / 2 - 70
     );
 
-    ctx.fillStyle = "#e8eaed";
+    ctx.fillStyle = COLORS.text;
     ctx.font = "22px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("deliveredThis", { n: state.deliveredThisLevel }), width / 2, height / 2 - 14);
     ctx.fillText(t("missedThis", { n: state.missedThisLevel }), width / 2, height / 2 + 18);
@@ -1339,7 +1386,7 @@
     );
 
     if (finished) {
-      ctx.fillStyle = "#78faae";
+      ctx.fillStyle = COLORS.electric;
       ctx.font = "20px 'Segoe UI', Arial, sans-serif";
       ctx.fillText(t("pressAddScore"), width / 2, height / 2 + 104);
       return;
@@ -1377,13 +1424,13 @@
       const names = unlocked
         .map((f) => standLabel(f) + " (" + fuelLabel(f) + ")")
         .join(", ");
-      ctx.fillStyle = "#78faae";
+      ctx.fillStyle = COLORS.electric;
       ctx.font = "bold 20px 'Segoe UI', Arial, sans-serif";
       ctx.fillText(t("newStation", { names: names }), width / 2, y);
       y = drawUnlockGraphic(unlocked, y + 16);
     }
 
-    ctx.fillStyle = "#78faae";
+    ctx.fillStyle = COLORS.electric;
     ctx.font = "bold 20px 'Segoe UI', Arial, sans-serif";
     notices.forEach((n) => {
       ctx.fillText(n, width / 2, y);
@@ -1391,7 +1438,7 @@
     });
 
     y += 14;
-    ctx.fillStyle = "#78faae";
+    ctx.fillStyle = COLORS.electric;
     ctx.font = "20px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("pressEnterLevel", { n: next }), width / 2, y);
   }
@@ -1400,11 +1447,11 @@
     const { width, height } = CONFIG.canvas;
     drawOverlay();
 
-    ctx.fillStyle = "#d6453b";
+    ctx.fillStyle = COLORS.danger;
     ctx.font = "bold 48px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("gameOver"), width / 2, height / 2 - 40);
 
-    ctx.fillStyle = "#e8eaed";
+    ctx.fillStyle = COLORS.text;
     ctx.font = "24px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(
       t("finalScore", { s: state.score, n: state.level }),
@@ -1412,7 +1459,7 @@
       height / 2 + 12
     );
 
-    ctx.fillStyle = "#78faae";
+    ctx.fillStyle = COLORS.electric;
     ctx.font = "18px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("pressAddScore"), width / 2, height / 2 + 56);
   }
@@ -1428,18 +1475,18 @@
     ctx.textBaseline = "middle";
 
     // Language selector (← / → cycles through the available languages).
-    ctx.fillStyle = "#e8eaed";
+    ctx.fillStyle = COLORS.text;
     ctx.font = "bold 20px 'Segoe UI', Arial, sans-serif";
     ctx.fillText("‹  " + LANG_NAMES[state.lang] + "  ›", width / 2, 34);
-    ctx.fillStyle = "#9aa0a6";
+    ctx.fillStyle = COLORS.textDim;
     ctx.font = "13px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("langHint"), width / 2, 58);
 
-    ctx.fillStyle = "#78faae";
+    ctx.fillStyle = COLORS.electric;
     ctx.font = "bold 40px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("chooseMode"), width / 2, 96);
 
-    ctx.fillStyle = "#9aa0a6";
+    ctx.fillStyle = COLORS.textDim;
     ctx.font = "16px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("menuHint"), width / 2, 130);
 
@@ -1450,17 +1497,17 @@
       const y = startY + i * (cardH + gap);
       const selected = i === state.menuIndex;
 
-      ctx.fillStyle = selected ? "#2f3a2a" : "#262a30";
+      ctx.fillStyle = selected ? COLORS.surfaceSel : COLORS.surface;
       ctx.fillRect(x, y, cardW, cardH);
       ctx.lineWidth = selected ? 4 : 2;
-      ctx.strokeStyle = selected ? "#78faae" : "#1c5c49";
+      ctx.strokeStyle = selected ? COLORS.electric : COLORS.emeraldLine;
       ctx.strokeRect(x, y, cardW, cardH);
 
       ctx.textAlign = "left";
-      ctx.fillStyle = selected ? "#78faae" : "#e8eaed";
+      ctx.fillStyle = selected ? COLORS.electric : COLORS.text;
       ctx.font = "bold 24px 'Segoe UI', Arial, sans-serif";
       ctx.fillText(modeLabel(key), x + 22, y + 28);
-      ctx.fillStyle = "#aab0b8";
+      ctx.fillStyle = COLORS.textDim;
       ctx.font = "15px 'Segoe UI', Arial, sans-serif";
       ctx.fillText(modeBlurb(key), x + 22, y + 54);
     });
@@ -1471,17 +1518,17 @@
     const boardY = startY + CONFIG.modeOrder.length * (cardH + gap) + 18;
 
     ctx.textAlign = "center";
-    ctx.fillStyle = "#e8eaed";
+    ctx.fillStyle = COLORS.text;
     ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("topScores", { mode: modeLabel(hlKey) }), width / 2, boardY);
 
     ctx.font = "15px 'Segoe UI', Arial, sans-serif";
     if (scores.length === 0) {
-      ctx.fillStyle = "#9aa0a6";
+      ctx.fillStyle = COLORS.textDim;
       ctx.fillText(t("noScoresMenu"), width / 2, boardY + 30);
     } else {
       scores.slice(0, 5).forEach((s, i) => {
-        ctx.fillStyle = "#cfd3d8";
+        ctx.fillStyle = COLORS.textMuted;
         ctx.fillText(
           (i + 1) + ".  " + s.name + "  —  " + s.score,
           width / 2,
@@ -1508,19 +1555,19 @@
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    ctx.fillStyle = "#78faae";
+    ctx.fillStyle = COLORS.electric;
     ctx.font = "bold 40px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("howToPlay"), width / 2, 60);
 
-    ctx.fillStyle = "#e8eaed";
+    ctx.fillStyle = COLORS.text;
     ctx.font = "20px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("brief1"), width / 2, 106);
     ctx.fillText(t("brief2"), width / 2, 134);
-    ctx.fillStyle = "#d6453b";
+    ctx.fillStyle = COLORS.danger;
     ctx.font = "18px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("brief3"), width / 2, 168);
 
-    ctx.fillStyle = "#9aa0a6";
+    ctx.fillStyle = COLORS.textDim;
     ctx.font = "16px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("matchThese"), width / 2, 212);
 
@@ -1545,13 +1592,13 @@
         ctx.fillStyle = fuel.color;
         ctx.fillRect(carCx - 48, cy - 28, 96, 40);
       }
-      ctx.fillStyle = "#cfd3d8";
+      ctx.fillStyle = COLORS.textMuted;
       ctx.font = "bold 14px 'Segoe UI', Arial, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText(modelForFuel(fuelKey), carCx, cy + 30);
 
       // Arrow.
-      ctx.fillStyle = "#e8eaed";
+      ctx.fillStyle = COLORS.text;
       ctx.font = "26px 'Segoe UI', Arial, sans-serif";
       ctx.fillText("→", arrowX, cy);
 
@@ -1563,19 +1610,19 @@
       } else {
         ctx.fillStyle = fuel.color;
         ctx.fillRect(stCx - 24, cy - 24, 48, 48);
-        ctx.strokeStyle = "rgba(255,255,255,0.25)";
+        ctx.strokeStyle = COLORS.hairline;
         ctx.lineWidth = 1;
         ctx.strokeRect(stCx - 24, cy - 24, 48, 48);
       }
 
-      ctx.fillStyle = "#e8eaed";
+      ctx.fillStyle = COLORS.text;
       ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
       ctx.textAlign = "left";
       ctx.fillText(standLabel(fuelKey) + " — " + fuelLabel(fuelKey), labelX, cy);
     });
 
     ctx.textAlign = "center";
-    ctx.fillStyle = "#78faae";
+    ctx.fillStyle = COLORS.electric;
     ctx.font = "20px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("pressEnterStart"), width / 2, height - 48);
   }
@@ -1588,11 +1635,11 @@
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    ctx.fillStyle = won ? "#78faae" : "#d6453b";
+    ctx.fillStyle = won ? COLORS.electric : COLORS.danger;
     ctx.font = "bold 40px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(won ? t("youFinished") : t("gameOver"), width / 2, height / 2 - 130);
 
-    ctx.fillStyle = "#e8eaed";
+    ctx.fillStyle = COLORS.text;
     ctx.font = "22px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(
       t("scoreMode", {
@@ -1603,25 +1650,25 @@
       height / 2 - 86
     );
 
-    ctx.fillStyle = "#9aa0a6";
+    ctx.fillStyle = COLORS.textDim;
     ctx.font = "18px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("enterNamePrompt"), width / 2, height / 2 - 30);
 
     // Input box with a blinking caret.
     const boxW = 380, boxH = 54;
     const bx = width / 2 - boxW / 2, by = height / 2;
-    ctx.fillStyle = "#262a30";
+    ctx.fillStyle = COLORS.surface;
     ctx.fillRect(bx, by, boxW, boxH);
     ctx.lineWidth = 3;
-    ctx.strokeStyle = "#78faae";
+    ctx.strokeStyle = COLORS.electric;
     ctx.strokeRect(bx, by, boxW, boxH);
 
     const caret = Math.floor(Date.now() / 500) % 2 === 0 ? "|" : "";
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = COLORS.textBright;
     ctx.font = "bold 26px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(state.nameInput + caret, width / 2, by + boxH / 2);
 
-    ctx.fillStyle = "#78faae";
+    ctx.fillStyle = COLORS.electric;
     ctx.font = "18px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("typeNameSave"), width / 2, by + boxH + 36);
   }
@@ -1634,12 +1681,12 @@
     ctx.textBaseline = "middle";
 
     ctx.textAlign = "center";
-    ctx.fillStyle = "#78faae";
+    ctx.fillStyle = COLORS.electric;
     ctx.font = "bold 36px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("leaderboard", { mode: modeLabel(modeKey) }), width / 2, 70);
 
     if (board.length === 0) {
-      ctx.fillStyle = "#9aa0a6";
+      ctx.fillStyle = COLORS.textDim;
       ctx.font = "18px 'Segoe UI', Arial, sans-serif";
       ctx.fillText(t("noScores"), width / 2, 140);
     }
@@ -1647,7 +1694,7 @@
     const rowH = 34, startY = 130;
     board.forEach((s, i) => {
       const isMe = s === state._lastEntry;
-      ctx.fillStyle = isMe ? "#78faae" : "#e8eaed";
+      ctx.fillStyle = isMe ? COLORS.electric : COLORS.text;
       ctx.font = (isMe ? "bold " : "") + "20px 'Segoe UI', Arial, sans-serif";
       const y = startY + i * rowH;
 
@@ -1660,7 +1707,7 @@
     });
 
     ctx.textAlign = "center";
-    ctx.fillStyle = "#78faae";
+    ctx.fillStyle = COLORS.electric;
     ctx.font = "18px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("pressEnterMenu"), width / 2, height - 36);
   }
