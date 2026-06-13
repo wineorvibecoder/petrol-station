@@ -894,7 +894,7 @@
   function scoreDelivery(car) {
     state.score += 1;
     state.deliveredThisLevel += 1;
-    addFlash(car, "#4ba82e", "+1");
+    addFlash(car, "#78faae", "+1");
   }
 
   // Wrong delivery / blocked police: lose a life, flash, pull away, check end.
@@ -969,7 +969,7 @@
 
   function drawBackdrop() {
     const { width, height } = CONFIG.canvas;
-    ctx.fillStyle = "#1a1d21";
+    ctx.fillStyle = "#0e3a2f"; // Škoda emerald green
     ctx.fillRect(0, 0, width, height);
   }
 
@@ -1144,11 +1144,11 @@
   function drawHud() {
     const { width } = CONFIG.canvas;
 
-    // Slightly translucent so the painted sky shows through the top band while
-    // the text stays readable.
-    ctx.fillStyle = "rgba(26,29,33,0.86)";
+    // Emerald-green band, slightly translucent so the painted sky shows through
+    // while the text stays readable; an electric-green accent line underneath.
+    ctx.fillStyle = "rgba(14,58,47,0.9)";
     ctx.fillRect(0, 0, width, CONFIG.hudHeight);
-    ctx.strokeStyle = "#3c424b";
+    ctx.strokeStyle = "rgba(120,250,174,0.55)";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, CONFIG.hudHeight);
@@ -1169,7 +1169,7 @@
 
     // Level + time (centre).
     ctx.textAlign = "center";
-    ctx.fillStyle = "#4ba82e";
+    ctx.fillStyle = "#78faae";
     ctx.font = "bold 22px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("level") + " " + state.level, width / 2, midY - 10);
     ctx.fillStyle = "#9aa0a6";
@@ -1187,7 +1187,7 @@
 
   function drawOverlay() {
     const { width, height } = CONFIG.canvas;
-    ctx.fillStyle = "rgba(0,0,0,0.74)";
+    ctx.fillStyle = "rgba(6,28,22,0.8)"; // dark emerald wash
     ctx.fillRect(0, 0, width, height);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -1199,7 +1199,7 @@
 
     const finished = state.level >= CONFIG.maxLevel;
 
-    ctx.fillStyle = "#4ba82e";
+    ctx.fillStyle = "#78faae";
     ctx.font = "bold 46px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(
       finished ? t("allComplete") : t("levelComplete", { n: state.level }),
@@ -1245,7 +1245,7 @@
       notices.push(t("plusLife"));
     }
 
-    ctx.fillStyle = "#4ba82e";
+    ctx.fillStyle = "#78faae";
     ctx.font = "bold 20px 'Segoe UI', Arial, sans-serif";
     notices.forEach((n, i) => ctx.fillText(n, width / 2, height / 2 + 90 + i * 26));
 
@@ -1297,7 +1297,7 @@
     ctx.font = "13px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("langHint"), width / 2, 58);
 
-    ctx.fillStyle = "#4ba82e";
+    ctx.fillStyle = "#78faae";
     ctx.font = "bold 40px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("chooseMode"), width / 2, 96);
 
@@ -1315,7 +1315,7 @@
       ctx.fillStyle = selected ? "#2f3a2a" : "#262a30";
       ctx.fillRect(x, y, cardW, cardH);
       ctx.lineWidth = selected ? 4 : 2;
-      ctx.strokeStyle = selected ? "#4ba82e" : "#3c424b";
+      ctx.strokeStyle = selected ? "#78faae" : "#1c5c49";
       ctx.strokeRect(x, y, cardW, cardH);
 
       ctx.textAlign = "left";
@@ -1362,7 +1362,7 @@
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    ctx.fillStyle = "#4ba82e";
+    ctx.fillStyle = "#78faae";
     ctx.font = "bold 40px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("howToPlay"), width / 2, 60);
 
@@ -1437,7 +1437,7 @@
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    ctx.fillStyle = won ? "#4ba82e" : "#d6453b";
+    ctx.fillStyle = won ? "#78faae" : "#d6453b";
     ctx.font = "bold 40px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(won ? t("youFinished") : t("gameOver"), width / 2, height / 2 - 130);
 
@@ -1462,7 +1462,7 @@
     ctx.fillStyle = "#262a30";
     ctx.fillRect(bx, by, boxW, boxH);
     ctx.lineWidth = 3;
-    ctx.strokeStyle = "#4ba82e";
+    ctx.strokeStyle = "#78faae";
     ctx.strokeRect(bx, by, boxW, boxH);
 
     const caret = Math.floor(Date.now() / 500) % 2 === 0 ? "|" : "";
@@ -1483,7 +1483,7 @@
     ctx.textBaseline = "middle";
 
     ctx.textAlign = "center";
-    ctx.fillStyle = "#4ba82e";
+    ctx.fillStyle = "#78faae";
     ctx.font = "bold 36px 'Segoe UI', Arial, sans-serif";
     ctx.fillText(t("leaderboard", { mode: modeLabel(modeKey) }), width / 2, 70);
 
