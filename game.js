@@ -1,5 +1,5 @@
 /* ===========================================================================
-   Škoda Charging & Refueling Station — game logic (Phase 3)
+   Škoda Pit Stop — game logic (Phase 3)
 
    Pure Vanilla JS + Canvas 2D. No frameworks, no build step.
    Open index.html directly in a browser to run.
@@ -227,7 +227,7 @@
   // Only non-English strings are listed; t() falls back to the English value.
   const TRANSLATIONS = {
     en: {
-      title: "Charging & Refueling Station",
+      title: "Pit Stop",
       instructions:
         "Use ↑ / ↓ to steer the highlighted car into its matching station. Wrong station costs a life!",
       score: "Score", level: "Level", lives: "Lives",
@@ -266,7 +266,7 @@
       miss: "MISS!", policeCar: "Police", dirtyCar: "Dirty",
     },
     cs: {
-      title: "Nabíjecí a čerpací stanice",
+      title: "netankovat",
       instructions:
         "Šipkami ↑ / ↓ naveď zvýrazněné auto do správné stanice. Špatná stanice stojí život!",
       score: "Skóre", level: "Level", lives: "Životy",
@@ -313,7 +313,7 @@
       blurb_racing: "Pro dospělé · 3 životy · bez doplňování",
     },
     de: {
-      title: "Lade- und Tankstelle",
+      title: "Boxenstopp",
       instructions:
         "Mit ↑ / ↓ das markierte Auto in die passende Station lenken. Falsche Station kostet ein Leben!",
       score: "Punkte", level: "Level", lives: "Leben",

@@ -1,4 +1,4 @@
-# Škoda Charging & Refueling Station
+# Škoda Pit Stop
 
 A 2D top-down time-management browser game built with **pure Vanilla JavaScript, the HTML5 Canvas API, and CSS3** — no frameworks, no libraries, no build tools.
 
