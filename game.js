@@ -303,13 +303,13 @@
       chooseMode: "Choose your mode",
       menuHint: "↑ / ↓ to choose · Enter to continue",
       langHint: "← / → language",
-      topScores: "Top scores — {mode}",
-      noScoresMenu: "No scores yet — be the first!",
+      topScores: "Top scores: {mode}",
+      noScoresMenu: "No scores yet. Be the first!",
       howToPlay: "How to play",
       brief1: "Cars drive in from the left. Steer the highlighted car",
       brief2: "(marked with green ▲▼) with ↑ / ↓ into its matching station.",
       brief3: "It loads, then drives off for +1. Wrong station costs a life.",
-      matchThese: "Level 1 — match these:",
+      matchThese: "Level 1, match these:",
       pressEnterStart: "Press Enter to start",
       levelComplete: "LEVEL {n} COMPLETE",
       allComplete: "ALL LEVELS COMPLETE!",
@@ -318,9 +318,9 @@
       totalAndLives: "Total score: {s}    ·    Lives: {l}",
       pressAddScore: "Press Enter to add your score",
       newStation: "New station unlocked: {names}!",
-      policeNotice: "Police cars! Wave them through any free station — not the wash.",
-      moreCars: "More cars at once — stay sharp!",
-      fasterCars: "Faster cars ahead — speed up!",
+      policeNotice: "Police cars! Wave them through any free station, not the wash.",
+      moreCars: "More cars at once. Stay sharp!",
+      fasterCars: "Faster cars ahead. Speed up!",
       plusLife: "+1 life for finishing the level!",
       pressEnterLevel: "Press Enter for Level {n}",
       gameOver: "GAME OVER",
@@ -329,7 +329,7 @@
       scoreMode: "Score {s}  ·  {mode}",
       enterNamePrompt: "Enter your name for the leaderboard:",
       typeNameSave: "Type your name, then press Enter to save",
-      leaderboard: "Leaderboard — {mode}",
+      leaderboard: "Leaderboard: {mode}",
       noScores: "No scores yet.",
       lvShort: "Lv {n}",
       pressEnterMenu: "Press Enter for the menu",
@@ -343,13 +343,13 @@
       chooseMode: "Vyber si režim",
       menuHint: "↑ / ↓ výběr · Enter pokračovat",
       langHint: "← / → jazyk",
-      topScores: "Nejlepší skóre — {mode}",
-      noScoresMenu: "Zatím žádné skóre — buď první!",
+      topScores: "Nejlepší skóre: {mode}",
+      noScoresMenu: "Zatím žádné skóre. Buď první!",
       howToPlay: "Jak hrát",
       brief1: "Auta přijíždějí zleva. Naváděj zvýrazněné auto",
       brief2: "(značené zelenými ▲▼) šipkami ↑ / ↓ do správné stanice.",
       brief3: "Naloží a odjede za +1. Špatná stanice stojí život.",
-      matchThese: "Level 1 — přiřaď:",
+      matchThese: "Level 1, přiřaď:",
       pressEnterStart: "Stiskni Enter pro start",
       levelComplete: "LEVEL {n} HOTOVO",
       allComplete: "VŠECHNY LEVELY HOTOVO!",
@@ -358,9 +358,9 @@
       totalAndLives: "Celkové skóre: {s}    ·    Životy: {l}",
       pressAddScore: "Stiskni Enter pro zápis skóre",
       newStation: "Nová stanice: {names}!",
-      policeNotice: "Policejní auta! Pusť je volnou stanicí — ne do myčky.",
-      moreCars: "Víc aut najednou — dávej pozor!",
-      fasterCars: "Rychlejší auta — zrychli!",
+      policeNotice: "Policejní auta! Pusť je volnou stanicí, ne do myčky.",
+      moreCars: "Víc aut najednou. Dávej pozor!",
+      fasterCars: "Rychlejší auta. Zrychli!",
       plusLife: "+1 život za dokončení levelu!",
       pressEnterLevel: "Stiskni Enter pro Level {n}",
       gameOver: "KONEC HRY",
@@ -369,7 +369,7 @@
       scoreMode: "Skóre {s}  ·  {mode}",
       enterNamePrompt: "Zadej jméno do žebříčku:",
       typeNameSave: "Napiš jméno a stiskni Enter pro uložení",
-      leaderboard: "Žebříček — {mode}",
+      leaderboard: "Žebříček: {mode}",
       noScores: "Zatím žádné skóre.",
       lvShort: "Lvl {n}",
       pressEnterMenu: "Stiskni Enter pro menu",
@@ -391,13 +391,13 @@
       chooseMode: "Wähle deinen Modus",
       menuHint: "↑ / ↓ wählen · Enter weiter",
       langHint: "← / → Sprache",
-      topScores: "Bestenliste — {mode}",
-      noScoresMenu: "Noch keine Punkte — sei der Erste!",
+      topScores: "Bestenliste: {mode}",
+      noScoresMenu: "Noch keine Punkte. Sei der Erste!",
       howToPlay: "So wird gespielt",
       brief1: "Autos kommen von links. Lenke das markierte Auto",
       brief2: "(mit grünen ▲▼ markiert) mit ↑ / ↓ in die passende Station.",
       brief3: "Es lädt, fährt weg für +1. Falsche Station kostet ein Leben.",
-      matchThese: "Level 1 — ordne zu:",
+      matchThese: "Level 1, ordne zu:",
       pressEnterStart: "Enter drücken zum Starten",
       levelComplete: "LEVEL {n} GESCHAFFT",
       allComplete: "ALLE LEVEL GESCHAFFT!",
@@ -406,9 +406,9 @@
       totalAndLives: "Gesamtpunkte: {s}    ·    Leben: {l}",
       pressAddScore: "Enter drücken, um dein Ergebnis einzutragen",
       newStation: "Neue Station: {names}!",
-      policeNotice: "Polizeiautos! Lass sie durch eine freie Station — nicht die Waschanlage.",
-      moreCars: "Mehr Autos gleichzeitig — pass auf!",
-      fasterCars: "Schnellere Autos — beeil dich!",
+      policeNotice: "Polizeiautos! Lass sie durch eine freie Station, nicht die Waschanlage.",
+      moreCars: "Mehr Autos gleichzeitig. Pass auf!",
+      fasterCars: "Schnellere Autos. Beeil dich!",
       plusLife: "+1 Leben fürs Schaffen des Levels!",
       pressEnterLevel: "Enter drücken für Level {n}",
       gameOver: "SPIEL VORBEI",
@@ -417,7 +417,7 @@
       scoreMode: "Punkte {s}  ·  {mode}",
       enterNamePrompt: "Gib deinen Namen für die Bestenliste ein:",
       typeNameSave: "Namen eingeben, dann Enter zum Speichern",
-      leaderboard: "Bestenliste — {mode}",
+      leaderboard: "Bestenliste: {mode}",
       noScores: "Noch keine Punkte.",
       lvShort: "Lvl {n}",
       pressEnterMenu: "Enter drücken für das Menü",
@@ -1375,7 +1375,7 @@
       ctx.fillStyle = COLORS.text;
       ctx.font = font(TYPE.label);
       ctx.textAlign = "left";
-      ctx.fillText(standLabel(fuelKey) + " — " + fuelLabel(fuelKey), width / 2 + 70, cy);
+      ctx.fillText(standLabel(fuelKey) + " (" + fuelLabel(fuelKey) + ")", width / 2 + 70, cy);
     });
 
     ctx.textAlign = "center";
@@ -1551,7 +1551,7 @@
       scores.slice(0, 5).forEach((s, i) => {
         ctx.fillStyle = COLORS.textMuted;
         ctx.fillText(
-          (i + 1) + ".  " + s.name + "  —  " + s.score,
+          (i + 1) + ".  " + s.name + "  ·  " + s.score,
           width / 2,
           boardY + 30 + i * 22
         );
@@ -1639,7 +1639,7 @@
       ctx.fillStyle = COLORS.text;
       ctx.font = font(TYPE.label);
       ctx.textAlign = "left";
-      ctx.fillText(standLabel(fuelKey) + " — " + fuelLabel(fuelKey), labelX, cy);
+      ctx.fillText(standLabel(fuelKey) + " (" + fuelLabel(fuelKey) + ")", labelX, cy);
     });
 
     ctx.textAlign = "center";
