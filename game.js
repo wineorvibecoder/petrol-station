@@ -193,11 +193,14 @@
     // cars and stations sit exactly on the painted lanes — the markings aren't
     // evenly spaced, so we can't just divide the road band. Lane counts without
     // an image fall back to evenly spaced procedural grey lanes.
+    // Levels 9 and 10 both have 5 lanes but use different art: "5b" is the
+    // police-finale scene (see bgKey()), with its own re-measured lane centres.
     backgrounds: {
-      2: { src: "pozadi_2.png", lanes: [0.718, 0.832] },
-      3: { src: "pozadi_3.png", lanes: [0.611, 0.741, 0.871] },
-      4: { src: "pozadi_4.png", lanes: [0.553, 0.631, 0.724, 0.830] },
-      5: { src: "pozadi_5.png", lanes: [0.407, 0.496, 0.599, 0.708, 0.819] },
+      2:    { src: "pozadi_2.png",  lanes: [0.718, 0.832] },
+      3:    { src: "pozadi_3.png",  lanes: [0.611, 0.741, 0.871] },
+      4:    { src: "pozadi_4.png",  lanes: [0.514, 0.596, 0.697, 0.819] },
+      5:    { src: "pozadi_5.png",  lanes: [0.436, 0.523, 0.624, 0.732, 0.851] },
+      "5b": { src: "pozadi_5b.png", lanes: [0.482, 0.561, 0.655, 0.757, 0.862] },
     },
 
     // Each station has its own painted pump sprite (transparent PNG, measured
@@ -626,9 +629,17 @@
       bgCache[k] = rec;
     }
   }
+  // Which background art to use now. Normally one per lane count, but the
+  // 5-lane road has two scenes: level 9 uses "5", and the police finale
+  // (level 10+) uses "5b" — same lane count, different painted lane centres.
+  function bgKey() {
+    const n = laneCount();
+    if (n === 5 && state.level >= CONFIG.police.fromLevel) return "5b";
+    return n;
+  }
   // The loaded background record for the current lane count, or null.
   function currentBg() {
-    const rec = bgCache[laneCount()];
+    const rec = bgCache[bgKey()];
     return rec && rec.ready ? rec : null;
   }
 
@@ -714,7 +725,7 @@
   // (explicit centres in CONFIG); otherwise lanes are spread evenly across the
   // playfield below the HUD.
   function laneCenterY(laneIndex) {
-    const cfg = CONFIG.backgrounds[laneCount()];
+    const cfg = CONFIG.backgrounds[bgKey()];
     if (cfg && currentBg()) return cfg.lanes[laneIndex] * CONFIG.canvas.height;
     const top = CONFIG.hudHeight;
     const laneHeight = (CONFIG.canvas.height - top) / laneCount();
@@ -725,7 +736,7 @@
   // it's the average spacing between painted lane centres; otherwise the even
   // share of the playfield.
   function laneThickness() {
-    const cfg = CONFIG.backgrounds[laneCount()];
+    const cfg = CONFIG.backgrounds[bgKey()];
     if (cfg && currentBg() && cfg.lanes.length > 1) {
       const L = cfg.lanes;
       return ((L[L.length - 1] - L[0]) / (L.length - 1)) * CONFIG.canvas.height;
