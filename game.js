@@ -397,7 +397,8 @@
       pressAddScore: "Press Enter to add your score",
       newStation: "New station unlocked: {names}!",
       policeNotice: "Police cars! Wave them through any free station, not the wash.",
-      moreCars: "More cars at once. Stay sharp!",
+      moreCars: "Traffic's heating up — more cars at once!",
+      switchCars: "Tip: ← / → picks which car you steer, ↑ / ↓ drives it.",
       fasterCars: "Faster cars ahead. Speed up!",
       plusLife: "+1 life for finishing the level!",
       pressEnterLevel: "Press Enter for Level {n}",
@@ -438,7 +439,8 @@
       pressAddScore: "Stiskni Enter pro zápis skóre",
       newStation: "Nová stanice: {names}!",
       policeNotice: "Policejní auta! Pusť je volnou stanicí, ne do myčky.",
-      moreCars: "Víc aut najednou. Dávej pozor!",
+      moreCars: "Provoz houstne — víc aut najednou!",
+      switchCars: "Tip: šipkami ← / → přepínáš mezi auty, ↑ / ↓ je řídíš.",
       fasterCars: "Rychlejší auta. Zrychli!",
       plusLife: "+1 život za dokončení levelu!",
       pressEnterLevel: "Stiskni Enter pro Level {n}",
@@ -487,7 +489,8 @@
       pressAddScore: "Enter drücken, um dein Ergebnis einzutragen",
       newStation: "Neue Station: {names}!",
       policeNotice: "Polizeiautos! Lass sie durch eine freie Station, nicht die Waschanlage.",
-      moreCars: "Mehr Autos gleichzeitig. Pass auf!",
+      moreCars: "Der Verkehr zieht an — mehr Autos gleichzeitig!",
+      switchCars: "Tipp: mit ← / → wählst du das Auto, mit ↑ / ↓ lenkst du.",
       fasterCars: "Schnellere Autos. Beeil dich!",
       plusLife: "+1 Leben fürs Schaffen des Levels!",
       pressEnterLevel: "Enter drücken für Level {n}",
@@ -1601,9 +1604,11 @@
       notices.push(t("policeNotice"));
     }
     // Level 1 sends one car at a time; level 2 opens the spawn timer so several
-    // drive at once. Flag that instead of (or alongside) any speed-up.
+    // drive at once. Flag that instead of (or alongside) any speed-up, and now
+    // that juggling several cars matters, spell out the steer/switch controls.
     if (next === 2) {
       notices.push(t("moreCars"));
+      notices.push(t("switchCars"));
     }
     if (levelSpeed(next) > levelSpeed(state.level)) {
       notices.push(t("fasterCars"));
