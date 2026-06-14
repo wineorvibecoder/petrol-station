@@ -96,13 +96,13 @@
      font(role[, weight]) builds a canvas font string; pass a weight only to
      override the role's default (e.g. a bold variant of a regular-weight row).
      ========================================================================= */
-  const FONT_STACK = "'Segoe UI', Tahoma, Arial, sans-serif";
+  const FONT_STACK = "'Hanken Grotesk', 'Segoe UI', Arial, sans-serif";
   const TYPE = {
     display: { size: 46, weight: 700 }, // end screens (level complete, game over)
     h1:      { size: 36, weight: 700 }, // section titles (how-to, menu, board)
-    lead:    { size: 28, weight: 700 }, // mode names, name-entry value
-    body:    { size: 22, weight: 400 }, // primary body, prompts, HUD numbers
-    label:   { size: 22, weight: 700 }, // labels, notices, emphasised lines
+    lead:    { size: 28, weight: 600 }, // mode names, name-entry value (subhead)
+    body:    { size: 22, weight: 400 }, // primary body, prompts
+    label:   { size: 22, weight: 600 }, // labels, notices, emphasised lines (subhead)
     caption: { size: 17, weight: 400 }, // secondary text, hints, blurbs
     small:   { size: 13, weight: 400 }, // smallest sub-labels and hotkey hints
   };
@@ -1367,10 +1367,10 @@
     ctx.textBaseline = "middle";
     const midY = CONFIG.hudHeight / 2;
 
-    // Score + mode (left).
+    // Score + mode (left). HUD figures are bold (700), not the 600 label weight.
     ctx.textAlign = "left";
     ctx.fillStyle = COLORS.text;
-    ctx.font = font(TYPE.label);
+    ctx.font = font(TYPE.label, 700);
     ctx.fillText(t("score") + " " + state.score, 20, midY - 9);
     ctx.fillStyle = COLORS.textDim;
     ctx.font = font(TYPE.small);
@@ -1379,7 +1379,7 @@
     // Level + time (centre).
     ctx.textAlign = "center";
     ctx.fillStyle = COLORS.electric;
-    ctx.font = font(TYPE.label);
+    ctx.font = font(TYPE.label, 700);
     ctx.fillText(t("level") + " " + state.level, width / 2, midY - 10);
     ctx.fillStyle = COLORS.textDim;
     ctx.font = font(TYPE.small);
@@ -1921,5 +1921,24 @@
   preloadBackgrounds();
   preloadCarSprites();
   preloadStationSprites();
-  requestAnimationFrame(loop);
+
+  // Start the render loop only once the Hanken Grotesk weights are ready, so
+  // canvas text doesn't flash from the fallback on the first frames. The probe
+  // string mixes ASCII + Czech/German so both the latin and latin-ext subsets
+  // load. Degrades gracefully (boots on fallback) if the API or files fail.
+  function startLoop() {
+    requestAnimationFrame(loop);
+  }
+  if (document.fonts && document.fonts.load) {
+    const probe = "Aäěšč";
+    Promise.all([
+      document.fonts.load("400 16px 'Hanken Grotesk'", probe),
+      document.fonts.load("600 16px 'Hanken Grotesk'", probe),
+      document.fonts.load("700 16px 'Hanken Grotesk'", probe),
+    ])
+      .then(() => document.fonts.ready)
+      .then(startLoop, startLoop);
+  } else {
+    startLoop();
+  }
 })();

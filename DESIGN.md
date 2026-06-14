@@ -55,23 +55,30 @@ Emerald- or earth-tinted translucency only (no pure black/white alpha):
 
 ## Typography (`TYPE` + `font()` in game.js)
 
-One family: the system stack `'Segoe UI', Tahoma, Arial, sans-serif`. Hierarchy
-comes from size **and** weight, on a modular scale stepping ~1.27
-(13 / 17 / 22 / 28 / 36 / 46). `font(role[, weight])` builds the canvas string;
-pass a weight only to override a role's default.
+One family: **Hanken Grotesk** (SIL OFL stand-in for the proprietary Škoda Next),
+stack `'Hanken Grotesk', 'Segoe UI', Arial, sans-serif`. Self-hosted as local
+`.woff2` in `fonts/` (weights 400 / 600 / 700, each split latin + latin-ext for
+Czech/German), registered via `@font-face` in `style.css`; the render loop waits
+for `document.fonts.load` so canvas text never flashes from the fallback.
+
+Hierarchy comes from size **and** weight, on a modular scale stepping ~1.27
+(13 / 17 / 22 / 28 / 36 / 46). Weight policy: headings + HUD **700**, subheads
+**600**, body **400**. `font(role[, weight])` builds the canvas string; pass a
+weight only to override a role's default (e.g. HUD figures force 700).
 
 | Role | Size / Weight | Used for |
 |---|---|---|
 | `display` | 46 / 700 | level-complete, game-over, you-finished |
 | `h1` | 36 / 700 | how-to title, "choose mode", leaderboard title |
-| `lead` | 28 / 700 | mode names, name-entry value |
-| `body` | 22 / 400 | primary lines, prompts, HUD numbers |
-| `label` | 22 / 700 | labels, notices, emphasised lines |
+| `lead` | 28 / 600 | mode names, name-entry value (subhead) |
+| `body` | 22 / 400 | primary lines, prompts, lives/timer |
+| `label` | 22 / 600 | labels, notices, emphasised lines (subhead); HUD figures override to 700 |
 | `caption` | 17 / 400 | secondary text, hints, blurbs |
 | `small` | 13 / 400 | smallest sub-labels, hotkey hint |
 
 `style.css` keeps the HTML header (`#hud h1` electric-green, `#instructions`
-`--text-soft`) which sits above the canvas.
+`--text-soft`) which sits above the canvas and inherits Hanken Grotesk from
+`body`.
 
 ## Motion (`MOTION` + `EASE` in game.js)
 
