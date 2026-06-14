@@ -197,7 +197,7 @@
     // police-finale scene (see bgKey()), with its own re-measured lane centres.
     backgrounds: {
       2:    { src: "pozadi_2.png",  lanes: [0.718, 0.832] },
-      3:    { src: "pozadi_3.png",  lanes: [0.611, 0.741, 0.871] },
+      3:    { src: "pozadi_3.png",  lanes: [0.588, 0.692, 0.811] },
       4:    { src: "pozadi_4.png",  lanes: [0.514, 0.596, 0.697, 0.819] },
       5:    { src: "pozadi_5.png",  lanes: [0.436, 0.523, 0.624, 0.732, 0.851] },
       "5b": { src: "pozadi_5b.png", lanes: [0.482, 0.561, 0.655, 0.757, 0.862] },
