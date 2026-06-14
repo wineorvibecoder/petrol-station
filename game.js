@@ -269,12 +269,14 @@
     debug: true,
 
     // Difficulty. Level 1 is event-driven (one driving car at a time); from
-    // level 2 onward cars also arrive on a shrinking timer.
-    level1SpawnGap: 0.6,       // pause before the next car on level 1
+    // level 2 onward cars arrive on a timer that shrinks evenly from 3.50s at
+    // level 2 down to 1.50s at level 9 (7 steps of 2/7 s), then holds 1.50s
+    // for level 10 (the floor).
+    level1SpawnGap: 0.6,         // pause before the next car on level 1
     perLevel: {
-      spawnIntervalBase: 2.6,  // level 2 interval
-      spawnIntervalStep: 0.25, // shrink per level beyond 2
-      spawnIntervalMin: 0.9,
+      spawnIntervalBase: 3.5,    // level 2 interval
+      spawnIntervalStep: 2 / 7,  // even shrink per level (L2 3.50 -> L9 1.50)
+      spawnIntervalMin: 1.5,     // floor reached at level 9, held at level 10
     },
   };
 
