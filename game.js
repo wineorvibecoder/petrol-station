@@ -146,25 +146,35 @@
      gesture, so the first track starts on the first keypress (handleKeyDown);
      updateMusic() keeps the right track playing for the current phase.
      ========================================================================= */
+  // The two tracks are several MB each, so we don't fetch them on boot (that
+  // delayed first paint); initAudio() builds them once the intro splash is up.
   const AUDIO = {
-    background: new Audio("background_music.mp3"), // menu + all non-play screens
-    ingame: new Audio("ingame_music.mp3"),         // during play
+    background: null, // menu + all non-play screens
+    ingame: null,     // during play
   };
-  AUDIO.background.loop = true;
-  AUDIO.background.volume = 0.5;
-  AUDIO.ingame.loop = true;
-  AUDIO.ingame.volume = 0.45;
+  let audioReady = false;
+  function initAudio() {
+    if (audioReady) return;
+    audioReady = true;
+    AUDIO.background = new Audio("background_music.mp3");
+    AUDIO.ingame = new Audio("ingame_music.mp3");
+    AUDIO.background.loop = true;
+    AUDIO.background.volume = 0.5;
+    AUDIO.ingame.loop = true;
+    AUDIO.ingame.volume = 0.45;
+  }
 
   function loadMusicPref() {
     try { return localStorage.getItem("skoda_music") !== "off"; } catch (e) { return true; }
   }
   // Track that should be playing right now (null = silence).
   function desiredTrack() {
-    if (!state.musicOn) return null;
+    if (!audioReady || !state.musicOn) return null;
     return state.phase === "playing" ? AUDIO.ingame : AUDIO.background;
   }
   // Sync playback to phase + on/off. Cheap and idempotent; safe to call often.
   function updateMusic() {
+    if (!audioReady) return; // nothing built yet (still on the intro splash)
     const want = desiredTrack();
     if (AUDIO.background !== want && !AUDIO.background.paused) AUDIO.background.pause();
     if (AUDIO.ingame !== want && !AUDIO.ingame.paused) AUDIO.ingame.pause();
@@ -332,8 +342,8 @@
      STATE
      ========================================================================= */
   const state = {
-    // 'menu' | 'playing' | 'levelComplete' | 'gameOver' | 'enterName' | 'leaderboard'
-    phase: "menu",
+    // 'intro' | 'menu' | 'playing' | 'levelComplete' | 'gameOver' | 'enterName' | 'leaderboard'
+    phase: "intro",
     lang: "en",       // UI language ('en' | 'cs' | 'de'); set on boot
     mode: "kid",      // selected difficulty mode (chosen on the menu)
     menuIndex: 0,     // highlighted mode on the start menu
@@ -619,6 +629,15 @@
     return state.laneFuels.length;
   }
 
+  // Intro splash: a single self-contained image (title + how-to + "press
+  // Enter") shown first so the player sees something within a moment while the
+  // heavier art and music load behind it. Fetched before anything else.
+  const introImg = new Image();
+  let introReady = false;
+  let introShown = false; // set once it has actually been painted at least once
+  introImg.onload = () => { introReady = true; };
+  function preloadIntro() { introImg.src = "intro.png"; }
+
   // Background art cache, keyed by lane count. Loaded once at boot; until an
   // image is ready (or if there's no art for this lane count) the playfield
   // falls back to procedural grey lanes.
@@ -887,6 +906,7 @@
       return;
     }
     switch (state.phase) {
+      case "intro":         handleIntroKey(evt); break;
       case "menu":          handleMenuKey(evt); break;
       case "briefing":      handleBriefingKey(evt); break;
       case "playing":       handlePlayKey(evt); break;
@@ -900,6 +920,16 @@
     updateMusic();
   }
   window.addEventListener("keydown", handleKeyDown);
+
+  // Intro splash: any of Enter/Space moves on to the existing mode menu. If the
+  // player is quick, make sure the deferred assets have started loading.
+  function handleIntroKey(evt) {
+    if (evt.key === "Enter" || evt.key === " ") {
+      evt.preventDefault();
+      startHeavyLoads();
+      state.phase = "menu";
+    }
+  }
 
   // Start menu: pick a difficulty mode.
   function handleMenuKey(evt) {
@@ -1209,8 +1239,20 @@
     );
   }
 
+  function drawIntro() {
+    const { width, height } = CONFIG.canvas;
+    if (introReady) {
+      ctx.drawImage(introImg, 0, 0, width, height);
+      introShown = true;
+    } else {
+      // Brief emerald hold until the splash image arrives.
+      drawBackdrop();
+    }
+  }
+
   function drawScene() {
     // Non-gameplay screens own the whole canvas.
+    if (state.phase === "intro") return drawIntro();
     if (state.phase === "menu") return drawMenu();
     if (state.phase === "briefing") return drawBackdrop(), drawBriefing();
     if (state.phase === "enterName") return drawBackdrop(), drawEnterName();
@@ -2036,6 +2078,8 @@
     lastTime = timestamp;
     update(dt);
     render();
+    // Once the splash is actually on screen, pull in the heavy art and music.
+    if (introShown) startHeavyLoads();
     requestAnimationFrame(loop);
   }
 
@@ -2053,9 +2097,20 @@
   state.lang = loadLang();
   state.musicOn = loadMusicPref();
   applyDomLanguage();
-  preloadBackgrounds();
-  preloadCarSprites();
-  preloadStationSprites();
+
+  // Fetch only the intro splash up front; the rest (background art, car/station
+  // sprites, the two music tracks) is deferred until the splash is on screen so
+  // first paint isn't held up by several MB of audio. Idempotent.
+  preloadIntro();
+  let heavyStarted = false;
+  function startHeavyLoads() {
+    if (heavyStarted) return;
+    heavyStarted = true;
+    preloadBackgrounds();
+    preloadCarSprites();
+    preloadStationSprites();
+    initAudio();
+  }
 
   // Start the render loop only once the Hanken Grotesk weights are ready, so
   // canvas text doesn't flash from the fallback on the first frames. The probe
