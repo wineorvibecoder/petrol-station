@@ -252,8 +252,11 @@
 
     // Once the carwash is open, this share of (non-police) cars are dirty; the
     // rest are split evenly between the other open fuels (so e.g. petrol/diesel
-    // stay ~50:50). Keeps dirty cars rare instead of scaling with station count.
-    dirtyChance: 0.1,
+    // stay ~50:50). Set to 1/5 so the wash is one of five equal destinations
+    // (4 fuels + wash). On the police level this conveniently lands the wash at
+    // 1/6 of ALL cars too: police already take 1/6, and 0.2 of the remaining
+    // 5/6 is exactly 1/6 — so all six destinations end up at ~1/6.
+    dirtyChance: 0.2,
 
     carModels: {
       // Real Škoda models, each tied to the fuel its station serves. A dirty
