@@ -575,6 +575,13 @@
     document.documentElement.lang = state.lang;
   }
 
+  // The intro splash already paints the title and the controls, so hide the
+  // HTML header while it's up to avoid duplicating them; reveal it afterwards.
+  function syncChrome() {
+    const hud = document.getElementById("hud");
+    if (hud) hud.style.display = state.phase === "intro" ? "none" : "";
+  }
+
   // Step the language by +1 / -1 (wraps), persist it, and refresh the header.
   function cycleLanguage(dir) {
     const langs = CONFIG.languages;
@@ -928,6 +935,7 @@
       evt.preventDefault();
       startHeavyLoads();
       state.phase = "menu";
+      syncChrome();
     }
   }
 
@@ -2097,6 +2105,7 @@
   state.lang = loadLang();
   state.musicOn = loadMusicPref();
   applyDomLanguage();
+  syncChrome(); // hide the HTML header while the intro splash owns the screen
 
   // Fetch only the intro splash up front; the rest (background art, car/station
   // sprites, the two music tracks) is deferred until the splash is on screen so
