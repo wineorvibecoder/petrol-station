@@ -341,6 +341,7 @@
     laneFuels: [],    // active stations top-to-bottom; set per level
     cars: [],
     nextId: 1,
+    activeCarId: null, // id of the driving car the player steers (← / → switches)
     spawnTimer: 0,
     level: 1,
     score: 0,
@@ -371,7 +372,7 @@
     en: {
       title: "Pit Stop",
       instructions:
-        "Use ↑ / ↓ to steer the highlighted car into its matching station. Wrong station costs a life!",
+        "↑ / ↓ steer the highlighted car, ← / → switch between cars. Wrong station costs a life!",
       score: "Score", level: "Level", lives: "Lives",
       chooseMode: "Choose your mode",
       menuHint: "↑ / ↓ to choose · Enter to continue",
@@ -412,7 +413,7 @@
     cs: {
       title: "netankovat",
       instructions:
-        "Šipkami ↑ / ↓ naveď zvýrazněné auto do správné stanice. Špatná stanice stojí život!",
+        "↑ / ↓ řídí zvýrazněné auto, ← / → přepíná mezi auty. Špatná stanice stojí život!",
       score: "Skóre", level: "Level", lives: "Životy",
       chooseMode: "Vyber si režim",
       menuHint: "↑ / ↓ výběr · Enter pokračovat",
@@ -461,7 +462,7 @@
     de: {
       title: "Boxenstopp",
       instructions:
-        "Mit ↑ / ↓ das markierte Auto in die passende Station lenken. Falsche Station kostet ein Leben!",
+        "↑ / ↓ lenkt das markierte Auto, ← / → wechselt das Auto. Falsche Station kostet ein Leben!",
       score: "Punkte", level: "Level", lives: "Leben",
       chooseMode: "Wähle deinen Modus",
       menuHint: "↑ / ↓ wählen · Enter weiter",
@@ -828,14 +829,30 @@
     return state.cars.filter((c) => c.status === "driving");
   }
 
-  // The frontmost driving car (largest x) — the one the player steers.
+  // The driving car the player currently steers. Defaults to the frontmost
+  // (largest x), but the player can switch with ← / → (see cycleActiveCar);
+  // the choice is remembered by id until that car docks, then falls back to the
+  // frontmost so control passes on automatically.
   function activeCar() {
-    let best = null;
-    for (const c of state.cars) {
-      if (c.status !== "driving") continue;
-      if (!best || c.x > best.x) best = c;
-    }
-    return best;
+    const driving = drivingCars();
+    if (driving.length === 0) return null;
+    const picked = driving.find((c) => c.id === state.activeCarId);
+    if (picked) return picked;
+    const front = driving.reduce((a, c) => (c.x > a.x ? c : a));
+    state.activeCarId = front.id;
+    return front;
+  }
+
+  // Switch the steered car to the next/previous driving car by road position
+  // (← = one further back, → = one further ahead), wrapping around.
+  function cycleActiveCar(dir) {
+    const driving = drivingCars().sort((a, b) => a.x - b.x);
+    if (driving.length < 2) return;
+    const cur = activeCar();
+    let i = driving.findIndex((c) => c === cur);
+    if (i < 0) i = 0;
+    i = (i + dir + driving.length) % driving.length;
+    state.activeCarId = driving[i].id;
   }
 
   // Don't spawn on top of a car still entering from the left edge.
@@ -894,9 +911,15 @@
     if (evt.key === "Enter" || evt.key === " ") startGame();
   }
 
-  // Playing: steer the active car (plus dev hotkeys).
+  // Playing: ↑ / ↓ steer the active car, ← / → switch which driving car is
+  // active (no need to wait for the current one to dock), plus dev hotkeys.
   function handlePlayKey(evt) {
     if (CONFIG.debug && handleDebugKey(evt)) return;
+    if (evt.key === "ArrowLeft" || evt.key === "ArrowRight") {
+      evt.preventDefault();
+      cycleActiveCar(evt.key === "ArrowRight" ? 1 : -1);
+      return;
+    }
     const car = activeCar();
     if (!car) return;
     if (evt.key === "ArrowUp") {
