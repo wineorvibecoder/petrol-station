@@ -377,7 +377,6 @@
       menuHint: "↑ / ↓ to choose · Enter to continue",
       musicOn: "Music: on (M)",
       musicOff: "Music: off (M)",
-      langHint: "← / → language",
       topScores: "Top scores: {mode}",
       noScoresMenu: "No scores yet. Be the first!",
       howToPlay: "How to play",
@@ -419,7 +418,6 @@
       menuHint: "↑ / ↓ výběr · Enter pokračovat",
       musicOn: "Hudba: zapnutá (M)",
       musicOff: "Hudba: vypnutá (M)",
-      langHint: "← / → jazyk",
       topScores: "Nejlepší skóre: {mode}",
       noScoresMenu: "Zatím žádné skóre. Buď první!",
       howToPlay: "Jak hrát",
@@ -469,7 +467,6 @@
       menuHint: "↑ / ↓ wählen · Enter weiter",
       musicOn: "Musik: an (M)",
       musicOff: "Musik: aus (M)",
-      langHint: "← / → Sprache",
       topScores: "Bestenliste: {mode}",
       noScoresMenu: "Noch keine Punkte. Sei der Erste!",
       howToPlay: "So wird gespielt",
@@ -1631,13 +1628,31 @@
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    // Language selector (← / → cycles through the available languages).
-    ctx.fillStyle = COLORS.text;
-    ctx.font = font(TYPE.label);
-    ctx.fillText("‹  " + LANG_NAMES[state.lang] + "  ›", width / 2, 34);
-    ctx.fillStyle = COLORS.textDim;
-    ctx.font = font(TYPE.small);
-    ctx.fillText(t("langHint"), width / 2, 58);
+    // Language selector: prev-abbrev ‹ Active › next-abbrev (← / → cycles).
+    // The neighbours show where the arrows lead, so no translated hint line is
+    // needed (a Czech "jazyk" wouldn't help a German or British player).
+    const langs = CONFIG.languages;
+    const li = langs.indexOf(state.lang);
+    const prevAbbr = langs[(li - 1 + langs.length) % langs.length].toUpperCase();
+    const nextAbbr = langs[(li + 1) % langs.length].toUpperCase();
+    const segs = [
+      [prevAbbr + "  ", font(TYPE.caption), COLORS.textDim],
+      ["‹ ", font(TYPE.label), COLORS.textDim],
+      [LANG_NAMES[state.lang], font(TYPE.label), COLORS.text],
+      [" ›", font(TYPE.label), COLORS.textDim],
+      ["  " + nextAbbr, font(TYPE.caption), COLORS.textDim],
+    ];
+    let segTotal = 0;
+    segs.forEach((s) => { ctx.font = s[1]; segTotal += ctx.measureText(s[0]).width; });
+    let segX = width / 2 - segTotal / 2;
+    ctx.textAlign = "left";
+    segs.forEach((s) => {
+      ctx.font = s[1];
+      ctx.fillStyle = s[2];
+      ctx.fillText(s[0], segX, 42);
+      segX += ctx.measureText(s[0]).width;
+    });
+    ctx.textAlign = "center";
 
     ctx.fillStyle = COLORS.electric;
     ctx.font = font(TYPE.h1);
