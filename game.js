@@ -141,6 +141,45 @@
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* =========================================================================
+     AUDIO  (looping music: one track for menus/screens, one for play)
+     Toggled with M (persisted). Browsers only allow play() after a user
+     gesture, so the first track starts on the first keypress (handleKeyDown);
+     updateMusic() keeps the right track playing for the current phase.
+     ========================================================================= */
+  const AUDIO = {
+    background: new Audio("background_music.mp3"), // menu + all non-play screens
+    ingame: new Audio("ingame_music.mp3"),         // during play
+  };
+  AUDIO.background.loop = true;
+  AUDIO.background.volume = 0.5;
+  AUDIO.ingame.loop = true;
+  AUDIO.ingame.volume = 0.45;
+
+  function loadMusicPref() {
+    try { return localStorage.getItem("skoda_music") !== "off"; } catch (e) { return true; }
+  }
+  // Track that should be playing right now (null = silence).
+  function desiredTrack() {
+    if (!state.musicOn) return null;
+    return state.phase === "playing" ? AUDIO.ingame : AUDIO.background;
+  }
+  // Sync playback to phase + on/off. Cheap and idempotent; safe to call often.
+  function updateMusic() {
+    const want = desiredTrack();
+    if (AUDIO.background !== want && !AUDIO.background.paused) AUDIO.background.pause();
+    if (AUDIO.ingame !== want && !AUDIO.ingame.paused) AUDIO.ingame.pause();
+    if (want && want.paused) {
+      const p = want.play();
+      if (p && p.catch) p.catch(function () {}); // ignore autoplay rejection
+    }
+  }
+  function toggleMusic() {
+    state.musicOn = !state.musicOn;
+    try { localStorage.setItem("skoda_music", state.musicOn ? "on" : "off"); } catch (e) {}
+    updateMusic();
+  }
+
+  /* =========================================================================
      CONFIG
      ========================================================================= */
   const CONFIG = {
@@ -311,6 +350,7 @@
     missedThisLevel: 0,
     flash: null, // { x, y0, color, text, life }
     fade: 0,     // seconds left of the screen-entry emerald fade
+    musicOn: true, // music toggle (M); actual value restored on boot
   };
 
   // The config block for the currently selected mode, and its life cap.
@@ -335,6 +375,8 @@
       score: "Score", level: "Level", lives: "Lives",
       chooseMode: "Choose your mode",
       menuHint: "↑ / ↓ to choose · Enter to continue",
+      musicOn: "Music: on (M)",
+      musicOff: "Music: off (M)",
       langHint: "← / → language",
       topScores: "Top scores: {mode}",
       noScoresMenu: "No scores yet. Be the first!",
@@ -375,6 +417,8 @@
       score: "Skóre", level: "Level", lives: "Životy",
       chooseMode: "Vyber si režim",
       menuHint: "↑ / ↓ výběr · Enter pokračovat",
+      musicOn: "Hudba: zapnutá (M)",
+      musicOff: "Hudba: vypnutá (M)",
       langHint: "← / → jazyk",
       topScores: "Nejlepší skóre: {mode}",
       noScoresMenu: "Zatím žádné skóre. Buď první!",
@@ -423,6 +467,8 @@
       score: "Punkte", level: "Level", lives: "Leben",
       chooseMode: "Wähle deinen Modus",
       menuHint: "↑ / ↓ wählen · Enter weiter",
+      musicOn: "Musik: an (M)",
+      musicOff: "Musik: aus (M)",
       langHint: "← / → Sprache",
       topScores: "Bestenliste: {mode}",
       noScoresMenu: "Noch keine Punkte. Sei der Erste!",
@@ -805,6 +851,13 @@
      INPUT
      ========================================================================= */
   function handleKeyDown(evt) {
+    // M toggles music everywhere except while typing a leaderboard name, where
+    // 'm' is a valid character.
+    if ((evt.key === "m" || evt.key === "M") && state.phase !== "enterName") {
+      evt.preventDefault();
+      toggleMusic();
+      return;
+    }
     switch (state.phase) {
       case "menu":          handleMenuKey(evt); break;
       case "briefing":      handleBriefingKey(evt); break;
@@ -814,6 +867,9 @@
       case "enterName":     handleNameKey(evt); break;
       case "leaderboard":   handleLeaderboardKey(evt); break;
     }
+    // The first keypress is the user gesture that unlocks audio; keep playback
+    // synced to whatever phase the key may have moved us into.
+    updateMusic();
   }
   window.addEventListener("keydown", handleKeyDown);
 
@@ -925,6 +981,7 @@
     if (state._lastPhase !== state.phase) {
       state._lastPhase = state.phase;
       state.fade = reduceMotion ? 0 : MOTION.screenFade;
+      updateMusic(); // switch background <-> in-game music with the phase
     }
     if (state.fade > 0) state.fade = Math.max(0, state.fade - dt);
 
@@ -1101,7 +1158,21 @@
     const { width, height } = CONFIG.canvas;
     ctx.clearRect(0, 0, width, height);
     drawScene();
+    drawMusicIndicator();
     drawScreenFade(); // decorative emerald fade-in on screen entry; always last
+  }
+
+  // Small persistent music status + key hint, bottom-right on every screen.
+  function drawMusicIndicator() {
+    ctx.fillStyle = COLORS.hintFaint;
+    ctx.font = font(TYPE.small);
+    ctx.textAlign = "right";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(
+      t(state.musicOn ? "musicOn" : "musicOff"),
+      CONFIG.canvas.width - 12,
+      CONFIG.canvas.height - 8
+    );
   }
 
   function drawScene() {
@@ -1917,6 +1988,7 @@
   } catch (e) { /* console may be unavailable */ }
 
   state.lang = loadLang();
+  state.musicOn = loadMusicPref();
   applyDomLanguage();
   preloadBackgrounds();
   preloadCarSprites();

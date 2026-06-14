@@ -35,6 +35,11 @@ When a run ends (either by running out of lives or by finishing level 10) you ca
 - **↑ / ↓**: move the highlighted car up/down a lane (and navigate the menu)
 - **Enter**: confirm menu choice · advance from the result screen · save your name
 - **Backspace**: edit your name on the name-entry screen
+- **M**: toggle music on/off (remembered in `localStorage`; ignored on the name-entry screen, where it types a letter)
+
+## Music
+
+Two looping tracks play locally (no CDN): `background_music.mp3` on the menu and all non-gameplay screens, `ingame_music.mp3` during play. Music starts on the first key press (browsers block autoplay until a user gesture) and switches automatically with the screen. Toggle it any time with **M**.
 
 ## Scoring & difficulty
 
