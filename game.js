@@ -184,7 +184,7 @@
      ========================================================================= */
   const CONFIG = {
     canvas: { width: 960, height: 600 },
-    hudHeight: 70,
+    hudHeight: 44,
 
     // Per-lane-count background art (painterly scenery + asphalt). The road
     // grows with the number of open stations, so each lane count has its own
@@ -1469,23 +1469,32 @@
     ctx.textBaseline = "middle";
     const midY = CONFIG.hudHeight / 2;
 
-    // Score + mode (left). HUD figures are bold (700), not the 600 label weight.
+    // Everything on one row so the band can stay thin and reveal more scenery.
+    // The mode (kid/racing) was chosen on the menu, so it isn't repeated here.
+
+    // Score (left). HUD figures are bold (700), not the 600 label weight.
     ctx.textAlign = "left";
     ctx.fillStyle = COLORS.text;
     ctx.font = font(TYPE.label, 700);
-    ctx.fillText(t("score") + " " + state.score, 20, midY - 9);
-    ctx.fillStyle = COLORS.textDim;
-    ctx.font = font(TYPE.small);
-    ctx.fillText(modeLabel(state.mode), 20, midY + 13);
+    ctx.fillText(t("score") + " " + state.score, 20, midY);
 
-    // Level + time (centre).
-    ctx.textAlign = "center";
+    // Level + time (centre) drawn as one centred group: green level, dim timer.
+    const lvl = t("level") + " " + state.level;
+    const tmr = "⏱ " + Math.ceil(state.timeLeft) + "s";
+    const gap = 18;
+    ctx.textAlign = "left";
+    ctx.font = font(TYPE.label, 700);
+    const wLvl = ctx.measureText(lvl).width;
+    ctx.font = font(TYPE.body);
+    const wTmr = ctx.measureText(tmr).width;
+    let cx = width / 2 - (wLvl + gap + wTmr) / 2;
     ctx.fillStyle = COLORS.electric;
     ctx.font = font(TYPE.label, 700);
-    ctx.fillText(t("level") + " " + state.level, width / 2, midY - 10);
+    ctx.fillText(lvl, cx, midY);
+    cx += wLvl + gap;
     ctx.fillStyle = COLORS.textDim;
-    ctx.font = font(TYPE.small);
-    ctx.fillText("⏱ " + Math.ceil(state.timeLeft) + "s", width / 2, midY + 12);
+    ctx.font = font(TYPE.body);
+    ctx.fillText(tmr, cx, midY);
 
     // Lives (right).
     ctx.textAlign = "right";
