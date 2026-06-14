@@ -196,7 +196,7 @@
     // Levels 9 and 10 both have 5 lanes but use different art: "5b" is the
     // police-finale scene (see bgKey()), with its own re-measured lane centres.
     backgrounds: {
-      2:    { src: "pozadi_2.png",  lanes: [0.718, 0.832] },
+      2:    { src: "pozadi_2.png",  lanes: [0.640, 0.791] },
       3:    { src: "pozadi_3.png",  lanes: [0.588, 0.692, 0.811] },
       4:    { src: "pozadi_4.png",  lanes: [0.514, 0.596, 0.697, 0.819] },
       5:    { src: "pozadi_5.png",  lanes: [0.436, 0.523, 0.624, 0.732, 0.851] },
