@@ -131,7 +131,14 @@
     dockRate: 13,    // horizontal queue/dock ease-out rate (1/s) — was 200 px/s
     flashRise: 30,   // px the +1 / miss text floats up over its life
     flashLife: 0.9,  // seconds the floating feedback text lives
+    flashPop: 0.3,   // extra scale the feedback text pops in with (ease-out)
+    screenFade: 0.24,// seconds of emerald fade-in when a new screen appears
   };
+  // Vestibular safety: decorative motion (screen fade, +1 pop) is skipped when
+  // the OS asks for reduced motion. Functional motion (cars, feedback) stays.
+  const reduceMotion =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* =========================================================================
      CONFIG
@@ -300,7 +307,8 @@
     timeLeft: CONFIG.levelDurationSeconds,
     deliveredThisLevel: 0,
     missedThisLevel: 0,
-    flash: null, // { x, y, color, text, life }
+    flash: null, // { x, y0, color, text, life }
+    fade: 0,     // seconds left of the screen-entry emerald fade
   };
 
   // The config block for the currently selected mode, and its life cap.
@@ -911,6 +919,13 @@
      UPDATE
      ========================================================================= */
   function update(dt) {
+    // Screen-entry fade: start one whenever the phase changes, then ease it out.
+    if (state._lastPhase !== state.phase) {
+      state._lastPhase = state.phase;
+      state.fade = reduceMotion ? 0 : MOTION.screenFade;
+    }
+    if (state.fade > 0) state.fade = Math.max(0, state.fade - dt);
+
     tickFlash(dt);
     if (state.phase !== "playing") return;
 
@@ -1083,7 +1098,11 @@
   function render() {
     const { width, height } = CONFIG.canvas;
     ctx.clearRect(0, 0, width, height);
+    drawScene();
+    drawScreenFade(); // decorative emerald fade-in on screen entry; always last
+  }
 
+  function drawScene() {
     // Non-gameplay screens own the whole canvas.
     if (state.phase === "menu") return drawMenu();
     if (state.phase === "briefing") return drawBackdrop(), drawBriefing();
@@ -1099,6 +1118,17 @@
     if (state.phase === "levelComplete") drawLevelComplete();
     if (state.phase === "gameOver") drawGameOver();
     if (CONFIG.debug) drawDebugHint();
+  }
+
+  // Quick emerald wash that eases away as a screen appears (skipped under
+  // reduced motion, where state.fade is never armed).
+  function drawScreenFade() {
+    if (state.fade <= 0) return;
+    const { width, height } = CONFIG.canvas;
+    ctx.globalAlpha = EASE.outQuart(state.fade / MOTION.screenFade) * 0.6;
+    ctx.fillStyle = COLORS.emerald;
+    ctx.fillRect(0, 0, width, height);
+    ctx.globalAlpha = 1;
   }
 
   function drawBackdrop() {
@@ -1303,12 +1333,18 @@
     // Rise eases out (fast off the mark, then settles); the text holds opaque
     // and fades only toward the end.
     const y = f.y0 - MOTION.flashRise * EASE.outExpo(progress);
+    // Gentle scale pop over the first third of life, then steady (decorative).
+    const pop = reduceMotion ? 0 : MOTION.flashPop * (1 - EASE.outQuart(Math.min(1, progress / 0.35)));
     ctx.globalAlpha = Math.max(0, Math.min(1, EASE.outQuart(remaining)));
     ctx.fillStyle = f.color;
     ctx.font = font(TYPE.label);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(f.text, f.x, y);
+    ctx.save();
+    ctx.translate(f.x, y);
+    ctx.scale(1 + pop, 1 + pop);
+    ctx.fillText(f.text, 0, 0);
+    ctx.restore();
     ctx.globalAlpha = 1;
   }
 
@@ -1869,6 +1905,15 @@
 
   // Boot: restore the saved/detected language, sync the header, then show the
   // start menu where the player picks a language and mode to begin.
+  // A small hello for anyone who opens the console.
+  try {
+    console.log(
+      "%cŠkoda Pit Stop%c\nVanilla JS · HTML5 canvas · no build step. Drive safe. 🟢",
+      "color:#78faae;font-weight:700;font-size:14px",
+      "color:#8ec9a9"
+    );
+  } catch (e) { /* console may be unavailable */ }
+
   state.lang = loadLang();
   applyDomLanguage();
   preloadBackgrounds();
