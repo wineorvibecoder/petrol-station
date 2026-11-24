@@ -1,0 +1,16 @@
+{
+  "name": "petrol-station",
+  "account_id": "17224c0c78fdbd245e016b7bad77df30",
+  "compatibility_date": "2026-10-30",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    {
+      "pattern": "petrol-station.elicer.cz",
+      "custom_domain": true
+    }
+  ],
+  "assets": {
+    "directory": "."
+  }
+}

@@ -58,7 +58,9 @@ Each lane count has its own painted background, and the road band grows as more 
 
 ## Run it
 
-Just open `index.html` in a browser (built and tested for Microsoft Edge on Windows 11). No server or build step required.
+Play online at [petrol-station.elicer.cz](https://petrol-station.elicer.cz/) or open `index.html` in a browser. No server or build step required.
+
+From `main`, run `npx wrangler deploy` while signed into the Cloudflare account for elicer.cz. The `.assetsignore` file defines which files are published.
 
 ## Files
 
